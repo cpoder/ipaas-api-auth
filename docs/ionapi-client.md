@@ -1,6 +1,6 @@
 # Client ION API par compte de service (package `IonApiClient`)
 
-Réponse au volet EAI : appeler les API Infor M3 (ION API) avec un compte de service OAuth 2, **sans jamais
+Objectif : appeler les API Infor M3 (ION API) avec un compte de service OAuth 2, **sans jamais
 configurer ni manipuler de jeton**. La seule configuration est le fichier `.ionapi` fourni par Infor, ou
 la saisie manuelle des mêmes valeurs dans l'interface d'administration (onglet *Saisie manuelle*).
 
