@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "webmethods-is": {
+      "command": "/chemin/vers/wm-mcp-server",
+      "env": { "WM_IS_URL": "http://localhost:5555", "WM_IS_USER": "Administrator", "WM_IS_PASSWORD": "manage", "WM_IS_TIMEOUT": "1800" }
+    }
+  }
+}

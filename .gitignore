@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.claude/
+.mcp.json
+*.log
+# certificat public de la clé IS, exporté par deploy.sh (propre à chaque installation)
+mock/is_cert.pem

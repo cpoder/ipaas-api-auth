@@ -1,0 +1,14 @@
+{
+  "ti": "DEMO",
+  "cn": "Demo service account",
+  "dt": "12",
+  "ci": "demo-client-id",
+  "cs": "demo-client-secret",
+  "iu": "http://localhost:8085",
+  "pu": "http://localhost:8085/DEMO/as/",
+  "oa": "authorization.oauth2",
+  "ot": "token.oauth2",
+  "or": "revoke_token.oauth2",
+  "saak": "DEMO#saak-service-account",
+  "sask": "sask-demo-secret"
+}

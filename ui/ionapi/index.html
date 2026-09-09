@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ION API · accès par compte de service</title>
+<style>
+  :root { --bg:#0f1419; --panel:#161c24; --panel2:#1c2430; --line:#2a3542; --text:#e6edf3; --muted:#8b98a8; --blue:#4589ff; --cyan:#33b1ff; --green:#42be65; --amber:#f1c21b; --red:#fa4d56; --purple:#a56eff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 "IBM Plex Sans","Segoe UI",system-ui,sans-serif; }
+  header { display:flex; align-items:center; gap:16px; padding:14px 24px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header h1 { font-size:18px; margin:0; font-weight:600; } header h1 small { color:var(--muted); font-weight:400; margin-left:10px; font-size:13px; }
+  .spacer { flex:1; }
+  main { padding:18px 24px; display:grid; grid-template-columns: 1.05fr 1fr; gap:16px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; min-width:0; }
+  .panel h2 { font-size:13px; margin:0 0 12px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .panel h2 .tag { margin-left:auto; text-transform:none; letter-spacing:0; font-weight:500; font-size:12px; }
+  button { background:var(--panel2); color:var(--text); border:1px solid var(--line); padding:7px 12px; border-radius:6px; font:inherit; font-weight:600; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--blue); } button:disabled { opacity:.4; cursor:not-allowed; }
+  button.primary { background:var(--blue); border-color:var(--blue); color:#fff; } button.danger { color:var(--red); } button.small { padding:4px 9px; font-size:12px; }
+  input, select, textarea { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:7px 10px; font:inherit; width:100%; }
+  textarea { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size:12px; min-height:120px; }
+  label { display:block; color:var(--muted); font-size:12px; margin:8px 0 4px; }
+  .card { border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px; background:var(--panel2); }
+  .card h3 { margin:0 0 6px; font-size:15px; display:flex; align-items:center; gap:10px; }
+  .card .kv { display:grid; grid-template-columns: 130px 1fr; gap:2px 10px; font-size:12.5px; color:var(--muted); }
+  .card .kv b { color:var(--text); font-weight:500; word-break:break-all; }
+  .pill { padding:2px 9px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--line); color:var(--muted); }
+  .pill.ok { color:var(--green); border-color:var(--green); background:rgba(66,190,101,.12); }
+  .pill.warn { color:var(--amber); border-color:var(--amber); background:rgba(241,194,27,.12); }
+  .pill.bad { color:var(--red); border-color:var(--red); background:rgba(250,77,86,.12); }
+  .pill.info { color:var(--cyan); border-color:var(--cyan); background:rgba(51,177,255,.12); }
+  .pill.cache { color:var(--green); border-color:var(--green); } .pill.password { color:var(--amber); border-color:var(--amber); } .pill.refresh { color:var(--cyan); border-color:var(--cyan); }
+  .actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .row3 { display:grid; grid-template-columns: 1fr 110px 2fr; gap:10px; }
+  pre { background:#0b0f14; border:1px solid var(--line); border-radius:6px; padding:10px; font-size:12px; overflow:auto; max-height:330px; margin:8px 0 0; white-space:pre-wrap; word-break:break-all; }
+  .k { color:var(--muted); }
+  .journal { max-height:230px; overflow:auto; font-size:12px; }
+  .journal div { padding:4px 0; border-bottom:1px solid rgba(42,53,66,.6); display:grid; grid-template-columns: 145px 70px 90px 1fr; gap:8px; }
+  .hint { color:var(--muted); font-size:12px; margin:6px 0 0; }
+  .parsed { display:grid; grid-template-columns: 120px 1fr; gap:2px 10px; font-size:12px; margin-top:8px; }
+  .parsed b { font-weight:500; word-break:break-all; }
+  #toast { position:fixed; bottom:18px; right:18px; background:var(--panel2); border:1px solid var(--line); padding:10px 14px; border-radius:8px; display:none; max-width:520px; }
+  .mock { border-top:1px dashed var(--line); margin-top:14px; padding-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; color:var(--muted); font-size:12px; }
+  .mock input { width:80px; }
+  .tabs { display:flex; gap:6px; } .tabs button.on { border-color:var(--blue); color:var(--blue); }
+</style>
+</head>
+<body>
+<header>
+  <h1>ION API · <span data-t="title">accès par compte de service</span> <small data-t="subtitle">OAuth 2 sans gestion manuelle des jetons, sur webMethods Integration Server</small></h1>
+  <div class="spacer"></div>
+  <span class="pill info" id="hdrState">…</span>
+</header>
+<main>
+  <section class="panel">
+    <h2><span data-t="accesses">Accès configurés</span> <span class="tag" id="aliasCount"></span></h2>
+    <div id="aliases"></div>
+    <div class="card">
+      <h3 id="formTitle" data-t="add">Ajouter un accès</h3>
+      <div class="row">
+        <div><label data-t="aliasName">Nom de l'accès (alias)</label><input id="fAlias" placeholder="m3-prod"></div>
+        <div><label data-t="file">Fichier .ionapi (téléchargé depuis Infor ION API, compte de service)</label><input type="file" id="fFile" accept=".ionapi,application/json"></div>
+      </div>
+      <div class="tabs" style="margin-top:10px"><button class="small on" id="tabFile" data-t="tabFile">Fichier .ionapi</button><button class="small" id="tabManual" data-t="tabManual">Saisie manuelle</button></div>
+      <div id="modeFile">
+        <label data-t="paste">… ou collez son contenu</label>
+        <textarea id="fJson" placeholder='{"ti":"…","ci":"…","cs":"…","iu":"https://mingle-ionapi…","pu":"https://mingle-sso…/as/","ot":"token.oauth2","saak":"…","sask":"…"}'></textarea>
+        <div class="parsed" id="parsed"></div>
+      </div>
+      <div id="modeManual" hidden>
+        <div class="row">
+          <div><label data-t="mTokenUrl">URL du serveur de jetons</label><input id="mTokenUrl" placeholder="https://mingle-sso.inforcloudsuite.com:443/TENANT/as/token.oauth2"></div>
+          <div><label data-t="mApiBase">URL de base des API</label><input id="mApiBase" placeholder="https://mingle-ionapi.inforcloudsuite.com/TENANT"></div>
+          <div><label data-t="mClientId">Client id (application autorisée)</label><input id="mClientId"></div>
+          <div><label data-t="mClientSecret">Client secret</label><input id="mClientSecret" type="password"></div>
+          <div><label data-t="mSaak">Identifiant du compte de service (saak)</label><input id="mSaak"></div>
+          <div><label data-t="mSask">Secret du compte de service (sask)</label><input id="mSask" type="password"></div>
+          <div><label data-t="mScope">Scope (optionnel)</label><input id="mScope"></div>
+        </div>
+        <p class="hint" data-t="mHint">Infor exige les quatre secrets pour un compte de service (client id / secret de l'application autorisée + saak / sask). Le fichier .ionapi ne fait que les regrouper.</p>
+      </div>
+      <p class="hint" data-t="hint">Les quatre secrets (client id / secret, saak / sask) sont enregistrés dans le coffre chiffré de l'Integration Server. Aucun jeton à saisir : le package l'obtient, le met en cache et le renouvelle.</p>
+      <div class="actions"><button class="primary" id="btnSave" data-t="save">Enregistrer</button><button id="btnClear" data-t="clear">Effacer</button></div>
+    </div>
+    <div class="mock" id="mockBox"><span data-t="mockLabel">Simulateur ION API (mock/ion_mock.py, port 8085) : durée de vie des jetons</span><input id="mockTtl" type="number" min="10" max="7200"><span>s</span><button class="small" id="btnTtl" data-t="apply">Appliquer</button><span class="k" data-t="mockHint">(court pour montrer le renouvellement automatique)</span></div>
+  </section>
+
+  <section class="panel">
+    <h2><span data-t="call">Appeler ION API</span> <span class="tag" data-t="callTag">le flow appelant ne voit jamais de jeton</span></h2>
+    <div class="row3">
+      <div><label data-t="access">Accès</label><select id="cAlias"></select></div>
+      <div><label data-t="method">Méthode</label><select id="cMethod"><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option></select></div>
+      <div><label data-t="path">Chemin (relatif à la base de l'accès)</label><input id="cPath" value="/M3/m3api-rest/v2/execute/CRS610MI/GetBasicData?CUNO=C000042"></div>
+    </div>
+    <label data-t="body">Corps (POST / PUT, JSON)</label>
+    <textarea id="cBody" style="min-height:60px"></textarea>
+    <div class="actions"><button class="primary" id="btnCall" data-t="send">Envoyer</button><button id="btnForce" data-t="forceNew" title="Force une nouvelle authentification avant l'appel">Ré-authentifier puis envoyer</button></div>
+    <div id="callResult"></div>
+    <h2 style="margin-top:16px"><span data-t="journal">Journal des jetons</span> <span class="tag" id="serverTime"></span></h2>
+    <div class="journal" id="journal"></div>
+  </section>
+</main>
+<div id="toast"></div>
+<script>
+const AUTH = "Basic " + btoa("Administrator:manage");
+const LANG = new URLSearchParams(location.search).get("lang") === "en" ? "en" : "fr";
+const T = { fr: {}, en: {
+  title: "service-account access", subtitle: "OAuth 2 without manual token handling, on webMethods Integration Server", accesses: "Configured accesses", add: "Add an access", aliasName: "Access name (alias)",
+  file: ".ionapi file (downloaded from Infor ION API, service account)", paste: "… or paste its content", save: "Save", clear: "Clear", apply: "Apply",
+  hint: "The four secrets (client id / secret, saak / sask) are stored in the Integration Server encrypted store. No token to enter: the package obtains it, caches it and renews it.",
+  mockLabel: "Local ION API simulator: token lifetime", mockHint: "(short, to show the automatic renewal)", call: "Call ION API", callTag: "the calling flow never sees a token", access: "Access", method: "Method",
+  path: "Path (relative to the access base URL)", body: "Body (POST / PUT, JSON)", send: "Send", forceNew: "Re-authenticate then send", journal: "Token journal",
+  tabFile: ".ionapi file", tabManual: "Manual entry", mTokenUrl: "Token server URL", mApiBase: "API base URL", mClientId: "Client id (authorized app)", mClientSecret: "Client secret", mSaak: "Service account key (saak)", mSask: "Service account secret (sask)", mScope: "Scope (optional)",
+  mHint: "Infor requires the four secrets for a service account (client id / secret of the authorized app + saak / sask). The .ionapi file merely bundles them.",
+  test: "Test", del: "Delete", edit: "Edit", noAccess: "No access configured yet: add one from a .ionapi file.", tokenValid: "token valid, expires in", tokenNone: "no token yet", tokenExpired: "token expired",
+  source: "source", tenant: "tenant", apiBase: "API base", tokenUrl: "token URL", clientId: "client id", account: "service account", saved: "saved", confirmDel: "Delete this access and its token?",
+  testOk: "Token obtained", testKo: "Failed", sent: "Sending…", status: "HTTP", elapsed: "ms", retried: "renewed after 401", none: "no event yet",
+  ev: { password: "authentication", refresh: "refresh", "retry-401": "retry after 401", config: "configuration", error: "error", cache: "cache" }, s: "s"
+} };
+T.fr = { test: "Tester", del: "Supprimer", edit: "Modifier", noAccess: "Aucun accès configuré : ajoutez-en un à partir d'un fichier .ionapi.", tokenValid: "jeton valable, expire dans", tokenNone: "pas encore de jeton", tokenExpired: "jeton expiré",
+  source: "source", tenant: "tenant", apiBase: "base API", tokenUrl: "URL du jeton", clientId: "client id", account: "compte de service", saved: "enregistré", confirmDel: "Supprimer cet accès et son jeton ?",
+  testOk: "Jeton obtenu", testKo: "Échec", sent: "Envoi…", status: "HTTP", elapsed: "ms", retried: "renouvelé après un 401", none: "aucun événement",
+  ev: { password: "authentification", refresh: "refresh", "retry-401": "nouvel essai après 401", config: "configuration", error: "erreur", cache: "cache" }, s: "s" };
+const L = T[LANG]; const t = k => L[k] || k;
+if (LANG === "en") { document.documentElement.lang = "en"; document.title = "ION API · service-account access"; document.querySelectorAll("[data-t]").forEach(e => { if (T.en[e.dataset.t]) e.textContent = T.en[e.dataset.t]; }); }
+const $ = id => document.getElementById(id);
+async function api(svc, body) {
+  const r = await fetch("/invoke/ionapi." + svc, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": AUTH }, body: JSON.stringify(body || {}) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.$error || j.error || ("HTTP " + r.status));
+  return j;
+}
+const MOCK = "http://localhost:8085";
+async function mockApi(op, seconds) { const r = await fetch(MOCK + "/admin/ttl" + (op === "set" ? "?seconds=" + seconds : ""), { method: op === "set" ? "POST" : "GET" }); if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }
+function toast(msg, ms = 4000) { const e = $("toast"); e.textContent = msg; e.style.display = "block"; clearTimeout(e._h); e._h = setTimeout(() => e.style.display = "none", ms); }
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let aliases = [];
+
+function tokenPill(a) {
+  const n = Number(a.tokenExpiresIn);
+  if (!a.tokenExpiresAt) return `<span class="pill">${t("tokenNone")}</span>`;
+  if (n <= 0) return `<span class="pill warn">${t("tokenExpired")}</span>`;
+  return `<span class="pill ok">${t("tokenValid")} ${n} ${t("s")}</span> <span class="pill ${a.tokenSource || ""}">${t("source")}: ${t("ev")[a.tokenSource] || a.tokenSource || "?"}</span>`;
+}
+function renderAliases(d) {
+  aliases = d.aliases || [];
+  $("aliasCount").textContent = aliases.length ? aliases.length : "";
+  $("serverTime").textContent = d.serverTime || "";
+  $("hdrState").textContent = aliases.length + (LANG === "en" ? " access(es)" : " accès");
+  const box = $("aliases"); box.innerHTML = aliases.length ? "" : `<p class="hint">${t("noAccess")}</p>`;
+  aliases.forEach(a => {
+    const c = document.createElement("div"); c.className = "card";
+    c.innerHTML = `<h3>${esc(a.alias)} ${tokenPill(a)}</h3>
+      <div class="kv"><span>${t("tenant")}</span><b>${esc(a.tenant) || "–"}</b><span>${t("apiBase")}</span><b>${esc(a.apiBaseUrl)}</b><span>${t("tokenUrl")}</span><b>${esc(a.tokenUrl)}</b>
+      <span>${t("clientId")}</span><b>${esc(a.clientId)}</b><span>${t("account")}</span><b>${esc(a.saak)} · sask ••••••••</b><span>${t("saved")}</span><b>${esc(a.savedAt)}</b></div>
+      <div class="actions"><button class="small" data-act="test">${t("test")}</button><button class="small danger" data-act="del">${t("del")}</button><span class="k" id="res-${esc(a.alias)}"></span></div>`;
+    c.querySelector("[data-act=test]").onclick = async (ev) => {
+      const out = c.querySelector(".k"); out.textContent = "…"; ev.target.disabled = true;
+      try { const r = await api("admin/testAlias", { alias: a.alias }); out.innerHTML = r.ok === "true" ? `<span class="pill ok">${t("testOk")}</span> ${esc(r.message)} · ${esc(r.tokenPreview)}… · ${r.elapsedMs} ms` : `<span class="pill bad">${t("testKo")}</span> ${esc(r.message)}`; }
+      catch (e) { out.innerHTML = `<span class="pill bad">${t("testKo")}</span> ${esc(e.message)}`; }
+      ev.target.disabled = false; refresh();
+    };
+    c.querySelector("[data-act=del]").onclick = async () => { if (!confirm(t("confirmDel"))) return; await api("admin/deleteAlias", { alias: a.alias }); refresh(); };
+    box.appendChild(c);
+  });
+  const sel = $("cAlias"); const cur = sel.value; sel.innerHTML = aliases.map(a => `<option>${esc(a.alias)}</option>`).join(""); if (cur) sel.value = cur;
+  const j = $("journal"); const evs = (d.events || []).slice().reverse();
+  j.innerHTML = evs.length ? evs.map(e => `<div><span class="k">${esc(e.time)}</span><b>${esc(e.alias)}</b><span class="pill ${esc(e.event)}">${t("ev")[e.event] || esc(e.event)}</span><span>${esc(e.detail)}</span></div>`).join("") : `<p class="hint">${t("none")}</p>`;
+}
+async function refresh() { try { renderAliases(await api("admin/listAliases")); } catch (e) { $("hdrState").textContent = "IS ?"; console.error(e); } }
+
+function parsePreview() {
+  const box = $("parsed"); box.innerHTML = "";
+  try {
+    const j = JSON.parse($("fJson").value); const rows = [["tenant (ti)", j.ti], ["client id (ci)", j.ci], ["client secret (cs)", j.cs ? "••••••••" : ""], ["saak", j.saak], ["sask", j.sask ? "••••••••" : ""], ["API (iu)", j.iu], ["SSO (pu)", j.pu], ["token (ot)", j.ot]];
+    box.innerHTML = rows.map(([k, v]) => `<span class="k">${k}</span><b>${esc(v) || "<span class=k>–</span>"}</b>`).join("");
+    if (!$("fAlias").value && j.ti) $("fAlias").value = j.ti.toLowerCase();
+  } catch (e) { if ($("fJson").value.trim()) box.innerHTML = `<span class="k" style="color:var(--amber)">JSON ?</span>`; }
+}
+$("fJson").oninput = parsePreview;
+$("fFile").onchange = () => { const f = $("fFile").files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { $("fJson").value = r.result; parsePreview(); if (!$("fAlias").value) $("fAlias").value = f.name.replace(/\.ionapi$/i, ""); }; r.readAsText(f); };
+$("btnClear").onclick = () => { $("fAlias").value = ""; $("fJson").value = ""; $("fFile").value = ""; $("parsed").innerHTML = ""; ["mTokenUrl", "mApiBase", "mClientId", "mClientSecret", "mSaak", "mSask", "mScope"].forEach(i => $(i).value = ""); };
+let manual = false;
+function setMode(m) { manual = m; $("modeFile").hidden = m; $("modeManual").hidden = !m; $("tabFile").classList.toggle("on", !m); $("tabManual").classList.toggle("on", m); }
+$("tabFile").onclick = () => setMode(false); $("tabManual").onclick = () => setMode(true);
+$("btnSave").onclick = async () => {
+  try {
+    const req = { alias: $("fAlias").value.trim() };
+    if (manual) for (const [k, i] of Object.entries({ tokenUrl: "mTokenUrl", apiBaseUrl: "mApiBase", clientId: "mClientId", clientSecret: "mClientSecret", saak: "mSaak", sask: "mSask", scope: "mScope" })) { const v = $(i).value.trim(); if (v) req[k] = v; }
+    else req.ionapiJson = $("fJson").value;
+    const r = await api("admin/saveAlias", req); toast(r.message); $("btnClear").onclick(); refresh();
+  } catch (e) { toast(e.message, 7000); }
+};
+async function doCall(force) {
+  const box = $("callResult"); box.innerHTML = `<p class="hint">${t("sent")}</p>`;
+  const req = { alias: $("cAlias").value, method: $("cMethod").value.toLowerCase(), path: $("cPath").value, body: $("cBody").value || undefined };
+  try {
+    if (force) await api("admin/testAlias", { alias: req.alias });
+    const r = await api("api/call", req);
+    const ok = /^2/.test(r.status);
+    box.innerHTML = `<div class="actions" style="margin-top:8px"><span class="pill ${ok ? "ok" : "bad"}">${t("status")} ${esc(r.status)} ${esc(r.statusMessage)}</span><span class="pill ${esc(r.tokenSource)}">${t("source")}: ${t("ev")[r.tokenSource] || esc(r.tokenSource)}</span>${r.retried === "true" ? `<span class="pill warn">${t("retried")}</span>` : ""}<span class="pill">${esc(r.elapsedMs)} ${t("elapsed")}</span><span class="k">${esc(r.url)}</span></div>
+      <pre>${esc(r.json ? JSON.stringify(r.json, null, 2) : r.body)}</pre>`;
+  } catch (e) { box.innerHTML = `<div class="actions" style="margin-top:8px"><span class="pill bad">${esc(e.message)}</span></div>`; }
+  refresh();
+}
+$("btnCall").onclick = () => doCall(false); $("btnForce").onclick = () => doCall(true);
+$("btnTtl").onclick = async () => { try { const r = await mockApi("set", $("mockTtl").value); toast("TTL = " + r.ttl + " s"); } catch (e) { toast(e.message); } };
+mockApi("get").then(r => { $("mockTtl").value = r.ttl; }).catch(() => { $("mockBox").style.display = "none"; });
+refresh(); setInterval(refresh, 5000);
+</script>
+</body>
+</html>

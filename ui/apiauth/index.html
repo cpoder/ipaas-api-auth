@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API Auth · profils d'accès</title>
+<style>
+  :root { --bg:#0f1419; --panel:#161c24; --panel2:#1c2430; --line:#2a3542; --text:#e6edf3; --muted:#8b98a8; --blue:#4589ff; --cyan:#33b1ff; --green:#42be65; --amber:#f1c21b; --red:#fa4d56; --purple:#a56eff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 "IBM Plex Sans","Segoe UI",system-ui,sans-serif; }
+  header { display:flex; align-items:center; gap:16px; padding:14px 24px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header h1 { font-size:18px; margin:0; font-weight:600; } header h1 small { color:var(--muted); font-weight:400; margin-left:10px; font-size:13px; }
+  .spacer { flex:1; }
+  main { padding:18px 24px; display:grid; grid-template-columns: 1.1fr 1fr; gap:16px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; min-width:0; }
+  .panel h2 { font-size:13px; margin:0 0 12px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .panel h2 .tag { margin-left:auto; text-transform:none; letter-spacing:0; font-weight:500; font-size:12px; }
+  button { background:var(--panel2); color:var(--text); border:1px solid var(--line); padding:7px 12px; border-radius:6px; font:inherit; font-weight:600; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--blue); } button:disabled { opacity:.4; cursor:not-allowed; }
+  button.primary { background:var(--blue); border-color:var(--blue); color:#fff; } button.danger { color:var(--red); } button.small { padding:4px 9px; font-size:12px; }
+  input, select, textarea { background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:7px 10px; font:inherit; width:100%; }
+  textarea { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:12px; min-height:70px; }
+  label { display:block; color:var(--muted); font-size:12px; margin:8px 0 4px; }
+  .card { border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:10px; background:var(--panel2); }
+  .card h3 { margin:0 0 6px; font-size:15px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .card .kv { display:grid; grid-template-columns: 120px 1fr; gap:2px 10px; font-size:12.5px; color:var(--muted); }
+  .card .kv b { color:var(--text); font-weight:500; word-break:break-all; }
+  .pill { padding:2px 9px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
+  .pill.ok { color:var(--green); border-color:var(--green); background:rgba(66,190,101,.12); }
+  .pill.warn { color:var(--amber); border-color:var(--amber); background:rgba(241,194,27,.12); }
+  .pill.bad { color:var(--red); border-color:var(--red); background:rgba(250,77,86,.12); }
+  .pill.info { color:var(--cyan); border-color:var(--cyan); background:rgba(51,177,255,.12); }
+  .pill.type { color:var(--purple); border-color:var(--purple); background:rgba(165,110,255,.12); }
+  .pill.cache { color:var(--green); border-color:var(--green); } .pill.refresh { color:var(--cyan); border-color:var(--cyan); }
+  .pill.password, .pill.client_credentials, .pill.jwt_bearer, .pill.authorization_code { color:var(--amber); border-color:var(--amber); }
+  .pill.error, .pill.refresh-ko { color:var(--red); border-color:var(--red); } .pill.retry-401 { color:var(--amber); border-color:var(--amber); }
+  .actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+  .row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; } .row3 { display:grid; grid-template-columns: 1fr 110px 2fr; gap:10px; }
+  .types { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; } .types button.on { border-color:var(--blue); color:var(--blue); background:rgba(69,137,255,.12); }
+  pre { background:#0b0f14; border:1px solid var(--line); border-radius:6px; padding:10px; font-size:12px; overflow:auto; max-height:300px; margin:8px 0 0; white-space:pre-wrap; word-break:break-all; }
+  .k { color:var(--muted); }
+  .journal { max-height:260px; overflow:auto; font-size:12px; }
+  .journal div { padding:4px 0; border-bottom:1px solid rgba(42,53,66,.6); display:grid; grid-template-columns: 140px minmax(90px,auto) auto 1fr; gap:8px; align-items:start; }
+  .hint { color:var(--muted); font-size:12px; margin:6px 0 0; }
+  details { margin-top:10px; } summary { cursor:pointer; color:var(--muted); font-size:12px; }
+  #toast { position:fixed; bottom:18px; right:18px; background:var(--panel2); border:1px solid var(--line); padding:10px 14px; border-radius:8px; display:none; max-width:560px; z-index:9; }
+  .mock { border-top:1px dashed var(--line); margin-top:14px; padding-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; color:var(--muted); font-size:12px; }
+  .mock input { width:80px; }
+  .preset { display:grid; grid-template-columns: 1fr auto; gap:10px; align-items:end; }
+</style>
+</head>
+<body>
+<header>
+  <h1>API Auth · <span data-t="title">profils d'accès</span> <small data-t="subtitle">Basic, clé d'API, jeton, OAuth 2 (5 grants) : aucune gestion manuelle des jetons, sur webMethods Integration Server</small></h1>
+  <div class="spacer"></div>
+  <span class="pill info" id="hdrState">…</span>
+</header>
+<main>
+  <section class="panel">
+    <h2><span data-t="profiles">Profils configurés</span> <span class="tag" id="profileCount"></span></h2>
+    <div id="profiles"></div>
+    <div class="card">
+      <h3 id="formTitle" data-t="add">Ajouter un profil</h3>
+      <div class="preset">
+        <div><label data-t="preset">Modèle (pré-remplit les champs)</label><select id="fPreset"></select></div>
+        <div id="ionBox" hidden><label data-t="ionFile">Fichier .ionapi</label><input type="file" id="fIon" accept=".ionapi,application/json"></div>
+      </div>
+      <div class="row">
+        <div><label data-t="alias">Nom du profil (alias)</label><input id="fAlias" placeholder="crm-prod"></div>
+        <div><label data-t="baseUrl">URL de base de l'API</label><input id="fBaseUrl" placeholder="https://api.example.com/v1"></div>
+      </div>
+      <label data-t="type">Type d'authentification</label>
+      <div class="types" id="types"></div>
+      <div id="grantBox" hidden><label data-t="grant">Grant OAuth 2</label><select id="fGrant"></select><p class="hint" id="grantHint"></p></div>
+      <div class="row" id="fields"></div>
+      <details id="adv"><summary data-t="advanced">Options avancées (proxy, mTLS, paramètres supplémentaires, chemin de test)</summary><div class="row" id="advFields"></div></details>
+      <p class="hint" data-t="storeHint">Les secrets sont chiffrés dans le coffre de l'Integration Server. Pour un profil OAuth 2, le package obtient le jeton, le met en cache, le renouvelle et se ré-authentifie sur 401 : le flow appelant n'appelle que apiauth.api:call(alias, method, path).</p>
+      <div class="actions"><button class="primary" id="btnSave" data-t="save">Enregistrer</button><button id="btnClear" data-t="clear">Nouveau</button><span class="hint" id="editNote"></span></div>
+    </div>
+    <div class="mock" id="mockBox">
+      <span data-t="mockLabel">Simulateur local (mock/auth_mock.py, port 8086) : durée de vie des jetons</span>
+      <input id="mockTtl" type="number" min="5" value="90"> s <button class="small" id="btnTtl" data-t="apply">Appliquer</button>
+      <button class="small" id="btnRevoke" data-t="revoke">Révoquer tous les jetons</button>
+      <span data-t="mockHint">(pour montrer le renouvellement automatique et le nouvel essai après 401)</span>
+    </div>
+  </section>
+  <section class="panel">
+    <h2><span data-t="call">Appeler une API</span> <span class="tag" data-t="callTag">le flow appelant ne voit jamais de secret</span></h2>
+    <div class="row3">
+      <div><label data-t="profile">Profil</label><select id="cAlias"></select></div>
+      <div><label data-t="method">Méthode</label><select id="cMethod"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></div>
+      <div><label data-t="path">Chemin (relatif à l'URL de base)</label><input id="cPath" value="/api/bearer/customers/C000042"></div>
+    </div>
+    <div class="row">
+      <div><label data-t="body">Corps (POST / PUT, JSON)</label><textarea id="cBody"></textarea></div>
+      <div><label data-t="headers">En-têtes supplémentaires (JSON)</label><textarea id="cHeaders" placeholder='{"X-Request-Id": "…"}'></textarea></div>
+    </div>
+    <div class="actions"><button class="primary" id="btnCall" data-t="send">Envoyer</button></div>
+    <div id="callResult"></div>
+    <h2 style="margin-top:16px"><span data-t="journal">Journal d'authentification</span> <span class="tag" id="serverTime"></span></h2>
+    <div class="journal" id="journal"></div>
+  </section>
+</main>
+<div id="toast"></div>
+<script>
+const AUTH = "Basic " + btoa("Administrator:manage");
+const LANG = new URLSearchParams(location.search).get("lang") === "en" ? "en" : "fr";
+const MOCK = "http://localhost:8086";
+const CALLBACK = location.origin + "/invoke/apiauth.oauth/callback";
+const T = { fr: {}, en: {
+  title: "access profiles", subtitle: "Basic, API key, token, OAuth 2 (5 grants): no manual token handling, on webMethods Integration Server", profiles: "Configured profiles", add: "Add a profile", preset: "Template (pre-fills the fields)",
+  ionFile: ".ionapi file", alias: "Profile name (alias)", baseUrl: "API base URL", type: "Authentication type", grant: "OAuth 2 grant", advanced: "Advanced options (proxy, mTLS, extra parameters, test path)",
+  storeHint: "Secrets are encrypted in the Integration Server store. For an OAuth 2 profile the package obtains the token, caches it, renews it and re-authenticates on 401: the calling flow only calls apiauth.api:call(alias, method, path).",
+  save: "Save", clear: "New", apply: "Apply", revoke: "Revoke all tokens", mockLabel: "Local simulator (mock/auth_mock.py, port 8086): token lifetime", mockHint: "(to show automatic renewal and the retry after 401)",
+  call: "Call an API", callTag: "the calling flow never sees a secret", profile: "Profile", method: "Method", path: "Path (relative to the base URL)", body: "Body (POST / PUT, JSON)", headers: "Extra headers (JSON)", send: "Send", journal: "Authentication journal",
+  test: "Test", edit: "Edit", connect: "Connect", disconnect: "Forget token", del: "Delete", noProfile: "No profile yet: pick a template below or fill the form.", tokenValid: "token valid, expires in", tokenNone: "no token yet", tokenExpired: "token expired (renewed on next call)",
+  connected: "connected", notConnected: "not connected: click Connect", refreshTok: "refresh token", source: "source", saved: "saved", confirmDel: "Delete this profile and its token?", testOk: "OK", testKo: "Failed", sent: "Sending…", status: "HTTP", elapsed: "ms", retried: "renewed after 401", none: "no event yet",
+  editing: "editing: leave a secret blank to keep the stored one", connectWin: "Consent window opened: authorize the application, the token will be stored automatically.", connectOk: "Connected: token and refresh token stored.", connectKo: "Connection failed, see the journal.",
+  types: { none: "None", basic: "Basic", apikey: "API key", bearer: "Static token", oauth2: "OAuth 2" },
+  grants: { client_credentials: "client_credentials (machine to machine)", password: "password (service account)", refresh_token: "refresh_token (provided once)", authorization_code: "authorization_code + PKCE (user consent)", jwt_bearer: "jwt_bearer (signed assertion, RFC 7523)" },
+  grantHints: { client_credentials: "The application authenticates itself with client id / secret. Entra ID, SAP BTP, Auth0, Okta, Salesforce…", password: "Client id / secret plus a service account login / password. Infor ION API (saak / sask), legacy servers.",
+    refresh_token: "You paste a long-lived refresh token obtained elsewhere; the package rotates it and keeps it up to date.", authorization_code: "A user authorizes the application once in the browser (Connect button); the refresh token then lives in the store.",
+    jwt_bearer: "The package signs a JWT with a private key of the IS keystore and exchanges it for a token. Google service accounts, Salesforce JWT, Box, Adobe." },
+  f: { username: "Username", password: "Password", keyName: "Key name (header or query parameter)", keyValue: "Key value", keyIn: "Sent as", keyPrefix: "Value prefix (optional)", token: "Token", headerName: "Header name", prefix: "Header prefix",
+    tokenUrl: "Token endpoint URL", clientId: "Client id", clientSecret: "Client secret", scope: "Scope (optional)", clientAuth: "Client authentication", audience: "Audience (optional)", resource: "Resource (optional)", refreshToken: "Refresh token",
+    authUrl: "Authorization endpoint URL", redirectUri: "Redirect URI (to declare at the provider)", pkce: "PKCE", authExtra: "Extra authorization parameters (raw, e.g. access_type=offline&prompt=consent)",
+    keyStoreAlias: "IS keystore alias", keyAlias: "Key alias", jwtAlgorithm: "Signature algorithm", jwtIssuer: "Issuer (iss, defaults to client id)", jwtSubject: "Subject (sub)", jwtAudience: "Audience (aud, defaults to the token URL)", jwtClaims: "Extra JWT claims (JSON)",
+    proxyAlias: "IS proxy alias", mtlsKeyStore: "mTLS: keystore alias", mtlsKey: "mTLS: key alias", trustStore: "Truststore alias", extraParams: "Extra token request parameters (JSON)", testPath: "Test path (GET, used by the Test button)" },
+  ev: { password: "authentication", client_credentials: "authentication", jwt_bearer: "authentication", authorization_code: "authorization", refresh: "refresh", "retry-401": "retry after 401", "refresh-ko": "refresh refused", config: "configuration", error: "error", cache: "cache" }, s: "s",
+  presets: { generic: "Generic", "infor-ion": "Infor ION API (.ionapi service account)", entra: "Microsoft Entra ID (Graph, client credentials)", "sf-cc": "Salesforce (client credentials)", "sf-jwt": "Salesforce (JWT bearer)", "google-sa": "Google service account (JWT bearer)", "sap-btp": "SAP BTP (XSUAA client credentials)",
+    auth0: "Auth0 (client credentials + audience)", okta: "Okta (client credentials)", "github-pat": "GitHub (personal access token)", "generic-ac": "Any provider with user consent (authorization code)",
+    "sim-cc": "Simulator: OAuth 2 client_credentials", "sim-pwd": "Simulator: OAuth 2 password (service account)", "sim-ac": "Simulator: OAuth 2 authorization_code + PKCE", "sim-jwt": "Simulator: OAuth 2 jwt_bearer (IS key)", "sim-rt": "Simulator: OAuth 2 refresh_token",
+    "sim-basic": "Simulator: Basic", "sim-apikey": "Simulator: API key (header)", "sim-apikey-q": "Simulator: API key (query parameter)", "sim-static": "Simulator: static token" },
+  groups: { providers: "Providers", sim: "Local simulator (demo)" }
+} };
+T.fr = { add: "Ajouter un profil", baseUrl: "URL de base", test: "Tester", edit: "Modifier", connect: "Connecter", disconnect: "Oublier le jeton", del: "Supprimer", noProfile: "Aucun profil : choisissez un modèle ci-dessous ou remplissez le formulaire.", tokenValid: "jeton valable, expire dans", tokenNone: "pas encore de jeton", tokenExpired: "jeton expiré (renouvelé au prochain appel)",
+  connected: "connecté", notConnected: "non connecté : cliquez sur Connecter", refreshTok: "refresh token", source: "source", saved: "enregistré", confirmDel: "Supprimer ce profil et son jeton ?", testOk: "OK", testKo: "Échec", sent: "Envoi…", status: "HTTP", elapsed: "ms", retried: "renouvelé après un 401", none: "aucun événement",
+  editing: "modification : laissez un secret vide pour conserver celui du coffre", connectWin: "Fenêtre de consentement ouverte : autorisez l'application, le jeton sera mémorisé automatiquement.", connectOk: "Connecté : jeton et refresh token mémorisés.", connectKo: "Connexion échouée, voir le journal.",
+  types: { none: "Aucune", basic: "Basic", apikey: "Clé d'API", bearer: "Jeton statique", oauth2: "OAuth 2" },
+  grants: { client_credentials: "client_credentials (machine à machine)", password: "password (compte de service)", refresh_token: "refresh_token (fourni une fois)", authorization_code: "authorization_code + PKCE (consentement utilisateur)", jwt_bearer: "jwt_bearer (assertion signée, RFC 7523)" },
+  grantHints: { client_credentials: "L'application s'authentifie elle-même avec client id / secret. Entra ID, SAP BTP, Auth0, Okta, Salesforce…", password: "Client id / secret plus le login / mot de passe d'un compte de service. Infor ION API (saak / sask), serveurs anciens.",
+    refresh_token: "Vous collez un refresh token longue durée obtenu ailleurs ; le package le fait tourner et le garde à jour.", authorization_code: "Un utilisateur autorise l'application une fois dans le navigateur (bouton Connecter) ; le refresh token vit ensuite dans le coffre.",
+    jwt_bearer: "Le package signe un JWT avec une clé privée du keystore de l'IS et l'échange contre un jeton. Comptes de service Google, Salesforce JWT, Box, Adobe." },
+  f: { username: "Utilisateur", password: "Mot de passe", keyName: "Nom de la clé (en-tête ou paramètre)", keyValue: "Valeur de la clé", keyIn: "Transmise en", keyPrefix: "Préfixe de la valeur (optionnel)", token: "Jeton", headerName: "Nom de l'en-tête", prefix: "Préfixe de l'en-tête",
+    tokenUrl: "URL du serveur de jetons", clientId: "Client id", clientSecret: "Client secret", scope: "Scope (optionnel)", clientAuth: "Authentification du client", audience: "Audience (optionnel)", resource: "Resource (optionnel)", refreshToken: "Refresh token",
+    authUrl: "URL d'autorisation", redirectUri: "Redirect URI (à déclarer chez le fournisseur)", pkce: "PKCE", authExtra: "Paramètres d'autorisation supplémentaires (bruts, ex. access_type=offline&prompt=consent)",
+    keyStoreAlias: "Alias du keystore IS", keyAlias: "Alias de la clé", jwtAlgorithm: "Algorithme de signature", jwtIssuer: "Issuer (iss, client id par défaut)", jwtSubject: "Subject (sub)", jwtAudience: "Audience (aud, URL du serveur de jetons par défaut)", jwtClaims: "Claims JWT supplémentaires (JSON)",
+    proxyAlias: "Alias de proxy IS", mtlsKeyStore: "mTLS : alias du keystore", mtlsKey: "mTLS : alias de la clé", trustStore: "Alias du truststore", extraParams: "Paramètres supplémentaires de la demande de jeton (JSON)", testPath: "Chemin de test (GET, utilisé par le bouton Tester)" },
+  ev: { password: "authentification", client_credentials: "authentification", jwt_bearer: "authentification", authorization_code: "autorisation", refresh: "refresh", "retry-401": "essai après 401", "refresh-ko": "refresh refusé", config: "configuration", error: "erreur", cache: "cache" }, s: "s",
+  presets: { generic: "Générique", "infor-ion": "Infor ION API (compte de service .ionapi)", entra: "Microsoft Entra ID (Graph, client credentials)", "sf-cc": "Salesforce (client credentials)", "sf-jwt": "Salesforce (JWT bearer)", "google-sa": "Compte de service Google (JWT bearer)", "sap-btp": "SAP BTP (XSUAA client credentials)",
+    auth0: "Auth0 (client credentials + audience)", okta: "Okta (client credentials)", "github-pat": "GitHub (jeton d'accès personnel)", "generic-ac": "Tout fournisseur avec consentement utilisateur (authorization code)",
+    "sim-cc": "Simulateur : OAuth 2 client_credentials", "sim-pwd": "Simulateur : OAuth 2 password (compte de service)", "sim-ac": "Simulateur : OAuth 2 authorization_code + PKCE", "sim-jwt": "Simulateur : OAuth 2 jwt_bearer (clé IS)", "sim-rt": "Simulateur : OAuth 2 refresh_token",
+    "sim-basic": "Simulateur : Basic", "sim-apikey": "Simulateur : clé d'API (en-tête)", "sim-apikey-q": "Simulateur : clé d'API (paramètre de requête)", "sim-static": "Simulateur : jeton statique" },
+  groups: { providers: "Fournisseurs", sim: "Simulateur local (démo)" } };
+const L = T[LANG]; const t = k => L[k] || k;
+if (LANG === "en") { document.documentElement.lang = "en"; document.title = "API Auth · access profiles"; document.querySelectorAll("[data-t]").forEach(e => { if (T.en[e.dataset.t]) e.textContent = T.en[e.dataset.t]; }); }
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function toast(msg, ms = 4500) { const e = $("toast"); e.textContent = msg; e.style.display = "block"; clearTimeout(e._h); e._h = setTimeout(() => e.style.display = "none", ms); }
+async function api(svc, body) {
+  const r = await fetch("/invoke/apiauth." + svc, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": AUTH }, body: JSON.stringify(body || {}) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.$error || j.error || ("HTTP " + r.status));
+  return j;
+}
+
+// ------------------------------------------------------------------ schéma du formulaire
+const SIM = { tokenUrl: MOCK + "/oauth/token", authUrl: MOCK + "/oauth/authorize", clientId: "demo-client-id", clientSecret: "demo-client-secret" };
+const PRESETS = {
+  generic: { type: "oauth2", grant: "client_credentials" },
+  "infor-ion": { type: "oauth2", grant: "password", preset: "infor-ion", labels: { username: "saak (identifiant du compte de service)", password: "sask (secret du compte de service)" } },
+  entra: { type: "oauth2", grant: "client_credentials", tokenUrl: "https://login.microsoftonline.com/{tenant-id}/oauth2/v2.0/token", scope: "https://graph.microsoft.com/.default", baseUrl: "https://graph.microsoft.com/v1.0", testPath: "/users?$top=1" },
+  "sf-cc": { type: "oauth2", grant: "client_credentials", tokenUrl: "https://{mydomain}.my.salesforce.com/services/oauth2/token", baseUrl: "https://{mydomain}.my.salesforce.com/services/data/v60.0", testPath: "/limits" },
+  "sf-jwt": { type: "oauth2", grant: "jwt_bearer", tokenUrl: "https://login.salesforce.com/services/oauth2/token", jwtAudience: "https://login.salesforce.com", jwtSubject: "integration.user@company.com", baseUrl: "https://{mydomain}.my.salesforce.com/services/data/v60.0", testPath: "/limits", labels: { clientId: "Consumer key (connected app)" } },
+  "google-sa": { type: "oauth2", grant: "jwt_bearer", tokenUrl: "https://oauth2.googleapis.com/token", jwtIssuer: "service-account@project.iam.gserviceaccount.com", jwtClaims: '{"scope": "https://www.googleapis.com/auth/cloud-platform"}', baseUrl: "https://www.googleapis.com", labels: { clientId: "client_email (issuer)" } },
+  "sap-btp": { type: "oauth2", grant: "client_credentials", clientAuth: "basic", tokenUrl: "https://{subdomain}.authentication.{region}.hana.ondemand.com/oauth/token", baseUrl: "https://{app}.cfapps.{region}.hana.ondemand.com" },
+  auth0: { type: "oauth2", grant: "client_credentials", tokenUrl: "https://{tenant}.auth0.com/oauth/token", audience: "https://{api-identifier}", baseUrl: "https://api.example.com" },
+  okta: { type: "oauth2", grant: "client_credentials", clientAuth: "basic", tokenUrl: "https://{org}.okta.com/oauth2/default/v1/token", scope: "api.read", baseUrl: "https://api.example.com" },
+  "github-pat": { type: "bearer", baseUrl: "https://api.github.com", testPath: "/user" },
+  "generic-ac": { type: "oauth2", grant: "authorization_code", redirectUri: CALLBACK, pkce: "true" },
+  "sim-cc": { alias: "sim-client-credentials", type: "oauth2", grant: "client_credentials", baseUrl: MOCK, scope: "read", testPath: "/api/bearer/customers/T1", ...SIM },
+  "sim-pwd": { alias: "sim-service-account", type: "oauth2", grant: "password", baseUrl: MOCK, username: "svc-user", password: "svc-pass", testPath: "/api/bearer/customers/T1", ...SIM },
+  "sim-ac": { alias: "sim-user-consent", type: "oauth2", grant: "authorization_code", baseUrl: MOCK, scope: "profile", redirectUri: CALLBACK, pkce: "true", testPath: "/api/bearer/customers/T1", ...SIM },
+  "sim-jwt": { alias: "sim-jwt-bearer", type: "oauth2", grant: "jwt_bearer", baseUrl: MOCK, keyStoreAlias: "DEFAULT_IS_KEYSTORE", keyAlias: "ssos", jwtSubject: "svc-user", jwtClaims: '{"scope": "read write"}', testPath: "/api/bearer/customers/T1", tokenUrl: SIM.tokenUrl, clientId: SIM.clientId },
+  "sim-rt": { alias: "sim-refresh-token", type: "oauth2", grant: "refresh_token", baseUrl: MOCK, testPath: "/api/bearer/customers/T1", ...SIM },
+  "sim-basic": { alias: "sim-basic", type: "basic", baseUrl: MOCK, username: "basic-user", password: "basic-pass", testPath: "/api/basic/customers/T1" },
+  "sim-apikey": { alias: "sim-api-key", type: "apikey", baseUrl: MOCK, keyName: "X-API-Key", keyValue: "key-demo-123", keyIn: "header", testPath: "/api/apikey/customers/T1" },
+  "sim-apikey-q": { alias: "sim-api-key-query", type: "apikey", baseUrl: MOCK, keyName: "api_key", keyValue: "key-demo-123", keyIn: "query", testPath: "/api/apikey/customers/T1" },
+  "sim-static": { alias: "sim-static-token", type: "bearer", baseUrl: MOCK, token: "static-demo-token", testPath: "/api/static/customers/T1" },
+};
+const SEL = (opts) => ({ kind: "select", opts });
+const FIELDS = {   // par type / grant : [nom, options]
+  basic: [["username"], ["password", { secret: true }]],
+  apikey: [["keyName", { ph: "X-API-Key" }], ["keyValue", { secret: true }], ["keyIn", SEL([["header", "header"], ["query", "query string"]])], ["keyPrefix", { ph: "Token " }]],
+  bearer: [["token", { secret: true }], ["headerName", { ph: "Authorization" }], ["prefix", { ph: "Bearer" }]],
+  oauth2: [["tokenUrl"], ["clientId"], ["clientSecret", { secret: true }], ["scope"]],
+  password: [["username"], ["password", { secret: true }]],
+  refresh_token: [["refreshToken", { secret: true }]],
+  authorization_code: [["authUrl"], ["redirectUri", { ph: CALLBACK }], ["pkce", SEL([["true", "S256"], ["false", LANG === "en" ? "disabled" : "désactivé"]])], ["authExtra"]],
+  jwt_bearer: [["keyStoreAlias", { ph: "DEFAULT_IS_KEYSTORE" }], ["keyAlias", { ph: "ssos" }], ["jwtAlgorithm", SEL([["RS256", "RS256"], ["RS384", "RS384"], ["RS512", "RS512"]])], ["jwtIssuer"], ["jwtSubject"], ["jwtAudience"], ["jwtClaims", { area: true, ph: '{"scope": "…"}' }]],
+};
+const ADV_OAUTH = [["clientAuth", SEL([["body", "client_id / client_secret " + (LANG === "en" ? "in the body" : "dans le corps")], ["basic", (LANG === "en" ? "Basic header" : "en-tête Basic") + " (RFC 6749 §2.3.1)"]])], ["audience"], ["resource"], ["extraParams", { area: true, ph: '{"tenant": "…"}' }], ["headerName", { ph: "Authorization" }]];
+const ADV_COMMON = [["testPath", { ph: "/me" }], ["proxyAlias"], ["mtlsKeyStore"], ["mtlsKey"], ["trustStore"]];
+const SECRETS = ["password", "clientSecret", "keyValue", "token", "refreshToken"];
+let state = { type: "oauth2", grant: "client_credentials", preset: "generic", editing: null, labels: {} };
+let profiles = [], lastTest = {};
+
+function fieldHtml([name, o = {}]) {
+  const label = esc(state.labels[name] || t("f")[name] || name), id = "f_" + name;
+  if (o.kind === "select") return `<div><label>${label}</label><select id="${id}">${o.opts.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join("")}</select></div>`;
+  if (o.area) return `<div style="grid-column:1/-1"><label>${label}</label><textarea id="${id}" placeholder="${esc(o.ph || "")}"></textarea></div>`;
+  return `<div><label>${label}</label><input id="${id}" ${o.secret ? 'type="password" autocomplete="new-password"' : ""} placeholder="${esc(o.ph || (o.secret && state.editing ? "•••• (" + (LANG === "en" ? "unchanged" : "inchangé") + ")" : ""))}"></div>`;
+}
+function renderForm(values = {}) {
+  $("types").innerHTML = Object.entries(t("types")).map(([k, l]) => `<button class="small ${state.type === k ? "on" : ""}" data-type="${k}">${esc(l)}</button>`).join("");
+  $("types").querySelectorAll("button").forEach(b => b.onclick = () => { state.type = b.dataset.type; renderForm(collect()); });
+  $("grantBox").hidden = state.type !== "oauth2";
+  $("fGrant").innerHTML = Object.entries(t("grants")).map(([k, l]) => `<option value="${k}" ${state.grant === k ? "selected" : ""}>${esc(l)}</option>`).join("");
+  $("grantHint").textContent = t("grantHints")[state.grant] || "";
+  $("ionBox").hidden = state.preset !== "infor-ion";
+  let main = [...(FIELDS[state.type] || [])], adv = [...ADV_COMMON];
+  if (state.type === "oauth2") { main = main.concat(FIELDS[state.grant] || []); adv = ADV_OAUTH.concat(adv); }
+  $("fields").innerHTML = main.map(fieldHtml).join(""); $("advFields").innerHTML = adv.map(fieldHtml).join("");
+  for (const [k, v] of Object.entries(values)) { const e = $("f_" + k); if (e && v != null) e.value = typeof v === "object" ? JSON.stringify(v) : v; }
+  if (values.alias != null) $("fAlias").value = values.alias; if (values.baseUrl != null) $("fBaseUrl").value = values.baseUrl;
+  if (state.type === "oauth2" && state.grant === "authorization_code" && !$("f_redirectUri").value) $("f_redirectUri").value = CALLBACK;
+  $("formTitle").textContent = state.editing ? (LANG === "en" ? "Edit profile " : "Modifier le profil ") + state.editing : t("add");
+  $("editNote").textContent = state.editing ? t("editing") : "";
+}
+function collect() {
+  const v = { alias: $("fAlias").value.trim(), baseUrl: $("fBaseUrl").value.trim(), type: state.type };
+  if (state.type === "oauth2") v.grant = state.grant;
+  document.querySelectorAll("#fields [id^=f_], #advFields [id^=f_]").forEach(e => { const k = e.id.slice(2), val = e.value.trim(); if (val) v[k] = val; });
+  return v;
+}
+$("fGrant").onchange = () => { state.grant = $("fGrant").value; renderForm(collect()); };
+$("fPreset").innerHTML = `<optgroup label="${esc(t("groups").providers)}">` + Object.keys(PRESETS).filter(k => !k.startsWith("sim-")).map(k => `<option value="${k}">${esc(t("presets")[k])}</option>`).join("") + `</optgroup><optgroup label="${esc(t("groups").sim)}">` +
+  Object.keys(PRESETS).filter(k => k.startsWith("sim-")).map(k => `<option value="${k}">${esc(t("presets")[k])}</option>`).join("") + "</optgroup>";
+$("fPreset").onchange = () => applyPreset($("fPreset").value);
+function applyPreset(k) {
+  const p = PRESETS[k]; state = { type: p.type, grant: p.grant || "client_credentials", preset: k, editing: null, labels: p.labels || {} };
+  const vals = { ...p }; delete vals.labels; vals.preset = k;
+  renderForm(vals); if (k.startsWith("sim-")) $("adv").open = false;
+}
+$("fIon").onchange = async () => {
+  const f = $("fIon").files[0]; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    renderForm({ ...collect(), alias: $("fAlias").value || (j.ti || "ion").toLowerCase() + "-m3", tokenUrl: (j.pu || "") + (j.ot || ""), baseUrl: j.iu ? j.iu.replace(/\/$/, "") + (j.ti ? "/" + j.ti : "") : "", clientId: j.ci, clientSecret: j.cs, username: j.saak, password: j.sask, preset: "infor-ion" });
+    toast(LANG === "en" ? ".ionapi file read: " + (j.ti || "?") : "Fichier .ionapi lu : tenant " + (j.ti || "?"));
+  } catch (e) { toast("JSON ? " + e.message); }
+};
+$("btnClear").onclick = () => applyPreset("generic");
+$("btnSave").onclick = async () => {
+  const p = collect(); if (state.preset && state.preset !== "generic") p.preset = state.preset;
+  for (const k of ["extraParams", "jwtClaims"]) if (p[k]) { try { p[k] = JSON.parse(p[k]); } catch (e) { return toast(k + " : JSON ? " + e.message); } }
+  if (p.mtlsKeyStore) { p.keyStoreAlias = p.mtlsKeyStore; delete p.mtlsKeyStore; } if (p.mtlsKey) { p.keyAlias = p.mtlsKey; delete p.mtlsKey; }
+  try { const r = await api("admin/saveProfile", { profileJson: JSON.stringify(p), keepToken: state.editing ? "true" : "false" }); toast(r.message); applyPreset("generic"); refresh(); }
+  catch (e) { toast(e.message, 8000); }
+};
+
+// ------------------------------------------------------------------ cartes
+function tokenPill(p) {
+  if (p.type !== "oauth2") return "";
+  const n = Number(p.tokenExpiresIn);
+  if (!p.tokenExpiresAt) return p.grant === "authorization_code" ? `<span class="pill warn">${t("notConnected")}</span>` : `<span class="pill">${t("tokenNone")}</span>`;
+  const src = `<span class="pill ${esc(p.tokenSource || "")}">${t("source")}: ${t("ev")[p.tokenSource] || esc(p.tokenSource)}</span>`;
+  const rt = p.hasRefreshToken === "true" ? ` <span class="pill info">${t("refreshTok")}</span>` : "";
+  if (n <= 0) return `<span class="pill warn">${t("tokenExpired")}</span>${rt}`;
+  return `<span class="pill ok">${t("tokenValid")} ${n} ${t("s")}</span> ${src}${rt}`;
+}
+function identity(p) {
+  if (p.type === "basic") return ["username", p.username]; if (p.type === "apikey") return [t("f").keyName, (p.keyName || "X-API-Key") + " (" + (p.keyIn || "header") + ")"];
+  if (p.type === "bearer") return [t("f").headerName, (p.headerName || "Authorization") + ": " + (p.prefix || "Bearer") + " ••••"];
+  if (p.type === "oauth2") return ["client id", p.clientId + (p.username ? " · " + p.username : "") + (p.jwtSubject ? " · sub " + p.jwtSubject : "")]; return ["", ""];
+}
+function renderProfiles(d) {
+  profiles = d.profiles || []; $("serverTime").textContent = d.serverTime || ""; $("profileCount").textContent = profiles.length;
+  $("hdrState").textContent = profiles.length + (LANG === "en" ? " profile(s)" : " profil(s)");
+  const box = $("profiles"); box.innerHTML = profiles.length ? "" : `<p class="hint">${t("noProfile")}</p>`;
+  for (const p of profiles) {
+    const c = document.createElement("div"); c.className = "card"; const [ik, iv] = identity(p);
+    c.innerHTML = `<h3>${esc(p.alias)} <span class="pill type">${t("types")[p.type] || esc(p.type)}${p.grant ? " · " + esc(p.grant) : ""}</span> ${tokenPill(p)}</h3>
+      <div class="kv"><span>${t("baseUrl")}</span><b>${esc(p.baseUrl || "")}</b>${p.tokenUrl ? `<span>${t("f").tokenUrl}</span><b>${esc(p.tokenUrl)}</b>` : ""}${p.authUrl ? `<span>${t("f").authUrl}</span><b>${esc(p.authUrl)}</b>` : ""}
+      ${ik ? `<span>${esc(ik)}</span><b>${esc(iv)}</b>` : ""}${p.keyStoreAlias && p.grant === "jwt_bearer" ? `<span>keystore</span><b>${esc(p.keyStoreAlias)} / ${esc(p.keyAlias)}</b>` : ""}<span>${t("saved")}</span><b>${esc(p.savedAt)}</b></div>
+      <div class="actions"><button class="small" data-act="test">${t("test")}</button>${p.grant === "authorization_code" ? `<button class="small primary" data-act="connect">${t("connect")}</button>` : ""}<button class="small" data-act="edit">${t("edit")}</button>${p.tokenExpiresAt ? `<button class="small" data-act="disc">${t("disconnect")}</button>` : ""}<button class="small danger" data-act="del">${t("del")}</button><span class="k" data-out>${lastTest[p.alias] || ""}</span></div>`;
+    const out = c.querySelector("[data-out]");
+    c.querySelector("[data-act=test]").onclick = async ev => {
+      ev.target.disabled = true; out.textContent = t("sent");
+      try { const r = await api("admin/testProfile", { alias: p.alias }); lastTest[p.alias] = r.ok === "true" ? `<span class="pill ok">${t("testOk")}</span> ${esc(r.message)} · ${r.elapsedMs} ms` : `<span class="pill bad">${t("testKo")}</span> ${esc(r.message)}`; }
+      catch (e) { lastTest[p.alias] = `<span class="pill bad">${t("testKo")}</span> ${esc(e.message)}`; }
+      out.innerHTML = lastTest[p.alias];
+      ev.target.disabled = false; refresh();
+    };
+    const con = c.querySelector("[data-act=connect]"); if (con) con.onclick = async () => {
+      try { const r = await api("oauth/authorizeUrl", { alias: p.alias }); window.open(r.url, "apiauth_consent", "width=560,height=640"); toast(t("connectWin"), 6000); } catch (e) { toast(e.message, 8000); }
+    };
+    c.querySelector("[data-act=edit]").onclick = () => {
+      state = { type: p.type, grant: p.grant || "client_credentials", preset: p.preset || "generic", editing: p.alias, labels: (PRESETS[p.preset] || {}).labels || {} };
+      const vals = { ...p }; if (p.type !== "oauth2" || p.grant !== "jwt_bearer") { if (p.keyStoreAlias) vals.mtlsKeyStore = p.keyStoreAlias; if (p.keyAlias) vals.mtlsKey = p.keyAlias; }
+      renderForm(vals); $("adv").open = true; window.scrollTo({ top: $("formTitle").offsetTop - 20, behavior: "smooth" });
+    };
+    const disc = c.querySelector("[data-act=disc]"); if (disc) disc.onclick = async () => { await api("admin/disconnect", { alias: p.alias }); refresh(); };
+    c.querySelector("[data-act=del]").onclick = async () => { if (!confirm(t("confirmDel"))) return; await api("admin/deleteProfile", { alias: p.alias }); refresh(); };
+    box.appendChild(c);
+  }
+  const sel = $("cAlias"); const cur = sel.value; sel.innerHTML = profiles.map(p => `<option>${esc(p.alias)}</option>`).join(""); if (cur) sel.value = cur;
+  const evs = (d.events || []).slice().reverse(); const j = $("journal");
+  j.innerHTML = evs.length ? evs.map(e => `<div><span class="k">${esc(e.time)}</span><b>${esc(e.alias)}</b><span class="pill ${esc(e.event)}">${t("ev")[e.event] || esc(e.event)}</span><span>${esc(e.detail)}</span></div>`).join("") : `<p class="hint">${t("none")}</p>`;
+}
+async function refresh() { try { renderProfiles(await api("admin/listProfiles")); } catch (e) { $("hdrState").textContent = "IS ?"; console.error(e); } }
+window.addEventListener("message", ev => { if (ev.data && ev.data.apiauth) { toast(ev.data.apiauth === "connected" ? t("connectOk") : t("connectKo"), 6000); refresh(); } });
+
+// ------------------------------------------------------------------ appel
+$("btnCall").onclick = async () => {
+  const box = $("callResult"); box.innerHTML = `<p class="hint">${t("sent")}</p>`;
+  const req = { alias: $("cAlias").value, method: $("cMethod").value.toLowerCase(), path: $("cPath").value };
+  if ($("cBody").value.trim()) req.body = $("cBody").value;
+  if ($("cHeaders").value.trim()) { try { req.headers = JSON.parse($("cHeaders").value); } catch (e) { return toast("headers : JSON ? " + e.message); } }
+  try {
+    const r = await api("api/call", req); const ok = r.status && r.status[0] === "2";
+    box.innerHTML = `<div class="actions" style="margin-top:8px"><span class="pill ${ok ? "ok" : "bad"}">${t("status")} ${esc(r.status)} ${esc(r.statusMessage)}</span><span class="pill type">${t("types")[r.authType] || esc(r.authType)}</span>${r.authType === "oauth2" ? `<span class="pill ${esc(r.source)}">${t("source")}: ${t("ev")[r.source] || esc(r.source)}</span>` : ""}${r.retried === "true" ? `<span class="pill warn">${t("retried")}</span>` : ""}<span class="pill">${esc(r.elapsedMs)} ${t("elapsed")}</span><span class="k">${esc(r.url)}</span></div>
+      <pre>${esc(r.json ? JSON.stringify(r.json, null, 2) : r.body)}</pre>`;
+  } catch (e) { box.innerHTML = `<div class="actions" style="margin-top:8px"><span class="pill bad">${esc(e.message)}</span></div>`; }
+  refresh();
+};
+$("btnTtl").onclick = async () => { try { const r = await fetch(MOCK + "/admin/ttl?seconds=" + $("mockTtl").value, { method: "POST" }).then(r => r.json()); toast("TTL = " + r.ttl + " s"); } catch (e) { toast(e.message); } };
+$("btnRevoke").onclick = async () => { try { const r = await fetch(MOCK + "/admin/revoke", { method: "POST" }).then(r => r.json()); toast((LANG === "en" ? "Tokens revoked: " : "Jetons révoqués : ") + r.revoked); } catch (e) { toast(e.message); } };
+fetch(MOCK + "/admin/ttl").then(r => r.json()).then(j => $("mockTtl").value = j.ttl).catch(() => $("mockBox").hidden = true);
+applyPreset("generic"); refresh(); setInterval(refresh, 5000);
+</script>
+</body>
+</html>
