@@ -1,94 +1,82 @@
-# ApiAuth : authentification d'API universelle sur webMethods Integration Server
+# ApiAuth: universal API authentication on webMethods Integration Server
 
-Package `ApiAuth` (17 flow services, construits par putNode via `wm/apiauth_build.py`) : un **profil d'accès** décrit
-comment s'authentifier auprès d'une API ; le flow métier n'appelle qu'un seul service et ne voit jamais de secret
-ni de jeton. Le package obtient les jetons, les met en cache (chiffrés), les renouvelle avant expiration, se
-ré-authentifie après un 401 et journalise chaque événement. Interface d'administration :
-`http://localhost:5555/ApiAuth/index.html` (`?lang=en` pour l'anglais). Généralise le package `IonApiClient`
-(Infor ION API devient un simple modèle « grant password »).
+`ApiAuth` package (17 flow services, built with putNode through `wm/apiauth_build.py`): an **access profile**
+describes how to authenticate against an API; the business flow calls a single service and never sees a secret
+or a token. The package obtains tokens, caches them (encrypted), renews them before expiry, re-authenticates after
+a 401 and journals every event. Admin UI: `http://localhost:5555/ApiAuth/index.html` (`?lang=fr` for French).
+Generalizes the `IonApiClient` package (Infor ION API becomes a plain "password grant" template).
 
-## Types de profil
+## Profile types
 
-| Type | Ce que le package envoie | Champs |
+| Type | What the package sends | Fields |
 |---|---|---|
-| `none` | rien | `baseUrl` |
+| `none` | nothing | `baseUrl` |
 | `basic` | `Authorization: Basic base64(user:password)` | `username`, `password` |
-| `apikey` | en-tête (`X-API-Key` par défaut) ou paramètre de requête | `keyName`, `keyValue`, `keyIn` (header / query), `keyPrefix` |
-| `bearer` | jeton statique (jeton d'accès personnel, clé longue durée) | `token`, `headerName` (Authorization), `prefix` (Bearer) |
-| `oauth2` | `Authorization: <token_type> <access_token>` géré automatiquement | `grant`, `tokenUrl`, `clientId`, `clientSecret`, `clientAuth` (body / basic), `scope`, `audience`, `resource`, `extraParams` |
+| `apikey` | header (`X-API-Key` by default) or query parameter | `keyName`, `keyValue`, `keyIn` (header / query), `keyPrefix` |
+| `bearer` | static token (personal access token, long-lived key) | `token`, `headerName` (Authorization), `prefix` (Bearer) |
+| `oauth2` | `Authorization: <token_type> <access_token>` managed automatically | `grant`, `tokenUrl`, `clientId`, `clientSecret`, `clientAuth` (body / basic), `scope`, `audience`, `resource`, `extraParams` |
 
-Grants OAuth 2 :
+OAuth 2 grants:
 
-| Grant | Champs supplémentaires | Cas typiques |
+| Grant | Extra fields | Typical cases |
 |---|---|---|
 | `client_credentials` | | Entra ID (Graph), SAP BTP, Auth0, Okta, Salesforce |
-| `password` | `username`, `password` | Infor ION API (saak / sask), serveurs anciens |
-| `refresh_token` | `refreshToken` (fourni une fois, rotation gérée) | jeton longue durée obtenu ailleurs |
-| `authorization_code` | `authUrl`, `redirectUri`, `pkce` (S256 par défaut), `authExtra` | consentement utilisateur (Google, HubSpot, Xero, QuickBooks…) via le bouton **Connecter** |
-| `jwt_bearer` | `keyStoreAlias`, `keyAlias`, `jwtAlgorithm`, `jwtIssuer`, `jwtSubject`, `jwtAudience`, `jwtClaims` | comptes de service Google, Salesforce JWT, Box, Adobe (RFC 7523) |
+| `password` | `username`, `password` | Infor ION API (saak / sask), legacy servers |
+| `refresh_token` | `refreshToken` (provided once, rotation handled) | long-lived token obtained elsewhere |
+| `authorization_code` | `authUrl`, `redirectUri`, `pkce` (S256 by default), `authExtra` | user consent (Google, HubSpot, Xero, QuickBooks...) through the **Connect** button |
+| `jwt_bearer` | `keyStoreAlias`, `keyAlias`, `jwtAlgorithm`, `jwtIssuer`, `jwtSubject`, `jwtAudience`, `jwtClaims` | Google service accounts, Salesforce JWT, Box, Adobe (RFC 7523) |
 
-Options communes : `proxyAlias`, `keyStoreAlias` / `keyAlias` (mTLS, certificat client du keystore IS), `trustStore`,
-`testPath` (GET de vérification du bouton Tester).
+Common options: `proxyAlias`, `keyStoreAlias` / `keyAlias` (mTLS, client certificate from the IS keystore),
+`trustStore`, `testPath` (verification GET used by the Test button).
 
 ## Services
 
-| Service | Rôle |
+| Service | Role |
 |---|---|
-| `apiauth.api:call (alias, method, path, body?, contentType?, headers?)` | **le seul service à appeler depuis un flow** ; rend `status`, `body`, `json`, `authType`, `source`, `retried`, `elapsedMs`, `url` |
-| `apiauth.credentials:get (alias, forceRefresh?)` | dispatcher : en-tête ou paramètre de requête à ajouter, selon le type ; pour un client HTTP maison |
-| `apiauth.oauth:token` | jeton OAuth 2 : cache chiffré → refresh token → grant principal ; marge de sécurité 30 s (5 s pour les jetons courts) ; les identifiants sont purgés du pipeline même en cas d'erreur |
-| `apiauth.oauth:tokenRequest` | POST form-urlencoded vers le serveur de jetons, client dans le corps ou en Basic (RFC 6749 §2.3.1), proxy / mTLS |
-| `apiauth.oauth:storeToken` | échéance calculée localement, mémorisation chiffrée, journal |
-| `apiauth.oauth:authorizeUrl` / `callback` | authorization code + PKCE S256 : URL de consentement, puis point de retour du navigateur (échange du code, page qui se ferme seule) |
-| `apiauth.admin:saveProfile / deleteProfile / listProfiles / testProfile / disconnect` | administration ; `listProfiles` ne rend jamais les secrets (indicateurs `has_*`) ; en modification, un secret absent conserve la valeur du coffre |
-| `apiauth.store:*`, `apiauth.log:event` | coffre de mots de passe sortants de l'IS (`WmSecureString`, chiffré au repos) et journal borné |
+| `apiauth.api:call (alias, method, path, body?, contentType?, headers?)` | **the only service to call from a flow**; returns `status`, `body`, `json`, `authType`, `source`, `retried`, `elapsedMs`, `url` |
+| `apiauth.credentials:get (alias, forceRefresh?)` | dispatcher: header or query parameter to add, depending on the type; for a custom HTTP client |
+| `apiauth.oauth:token` | OAuth 2 token: encrypted cache, then refresh token, then main grant; 30 s safety margin (5 s for short-lived tokens); credentials are purged from the pipeline even on error |
+| `apiauth.oauth:tokenRequest` | POST form-urlencoded to the token server, client in the body or as Basic (RFC 6749 section 2.3.1), proxy / mTLS |
+| `apiauth.oauth:storeToken` | expiry computed locally, encrypted storage, journal |
+| `apiauth.oauth:authorizeUrl` / `callback` | authorization code + PKCE S256: consent URL, then the browser return point (code exchange, page that closes by itself) |
+| `apiauth.admin:saveProfile / deleteProfile / listProfiles / testProfile / disconnect` | administration; `listProfiles` never returns secrets (`has_*` flags); on edit, a missing secret keeps the stored value |
+| `apiauth.store:*`, `apiauth.log:event` | IS outbound password store (`WmSecureString`, encrypted at rest) and capped journal |
 
-Le mécanisme de renouvellement est le même quel que soit le grant : jeton en cache encore valable → réutilisé ;
-expiré → refresh token si le serveur en a fourni un ; sinon grant principal ; sur 401 malgré un jeton jugé valable
-(révocation côté serveur) → ré-authentification et un seul nouvel essai transparent. Pour `refresh_token` et
-`authorization_code`, si le refresh token n'est plus accepté, l'erreur dit explicitement qu'il faut reconnecter.
+The renewal mechanism is the same whatever the grant: a cached token still valid is reused; expired, the refresh
+token is used when the server provided one; otherwise the main grant; on a 401 despite a token considered valid
+(server-side revocation), re-authentication and a single transparent retry. For `refresh_token` and
+`authorization_code`, when the refresh token is no longer accepted the error says explicitly that a reconnection is
+needed.
 
-## Interface d'administration
+## Admin UI
 
-Modèles qui pré-remplissent le formulaire : Infor ION API (dépôt du `.ionapi`), Microsoft Entra ID, Salesforce
-(client credentials ou JWT), compte de service Google (JWT), SAP BTP, Auth0, Okta, GitHub (jeton personnel),
-fournisseur générique avec consentement, et neuf profils prêts à l'emploi contre le simulateur local. Chaque carte
-montre l'état du jeton en temps réel (valable / expiré / non connecté, source, refresh token présent) et propose
-Tester, Connecter (authorization code), Modifier, Oublier le jeton, Supprimer. Le panneau d'appel exécute
-`apiauth.api:call` et affiche les badges HTTP, type, source du jeton, nouvel essai après 401 et durée.
+Templates that pre-fill the form: Infor ION API (drop the `.ionapi`), Microsoft Entra ID, Salesforce (client
+credentials or JWT), Google service account (JWT), SAP BTP, Auth0, Okta, GitHub (personal token), generic provider
+with consent, and nine ready-to-use profiles against the local simulator. Each card shows the token state live
+(valid / expired / not connected, source, refresh token present) and offers Test, Connect (authorization code),
+Edit, Forget token, Delete. The call panel runs `apiauth.api:call` and shows the HTTP, type, token source, retry
+after 401 and duration badges.
 
-## Simulateur
+## Simulator
 
-`mock/auth_mock.py` (port 8086, sans dépendance) : serveur d'autorisation avec les cinq grants, page de consentement,
-PKCE, rotation des refresh tokens, vérification de la signature des assertions JWT avec le certificat de la clé IS
-(`mock/is_cert.pem`, exporté par `deploy.sh apiauth`), et API protégées en Bearer, Basic, clé d'API (en-tête ou
-requête), jeton statique ou sans authentification. `POST /admin/ttl?seconds=N` raccourcit la durée de vie des jetons,
-`POST /admin/revoke` les invalide tous : c'est ce qui permet de montrer le renouvellement et le nouvel essai en direct.
+`mock/auth_mock.py` (port 8086, no dependency): authorization server with the five grants, consent page, PKCE,
+refresh token rotation, verification of the JWT assertion signature with the certificate of the IS key
+(`mock/is_cert.pem`, exported by `deploy.sh`), and APIs protected by Bearer, Basic, API key (header or query),
+static token or no authentication. `POST /admin/ttl?seconds=N` shortens the token lifetime, `POST /admin/revoke`
+invalidates every token: this is what shows the renewal and the retry live.
 
-`./deploy.sh apiauth` lance le simulateur, déploie le package, exécute la suite de tests (`TESTS OK` attendu :
-cinq types, cinq grants, expiration, révocation, rotation, PKCE de bout en bout, erreurs lisibles, aucun secret dans
-les sorties) et publie l'interface.
+`./deploy.sh` starts the simulator, deploys the package, runs the test suite (`TESTS OK` expected: five types,
+five grants, expiry, revocation, rotation, end-to-end PKCE, readable errors, no secret in the outputs) and
+publishes the UI.
 
-## Vers une vraie API
+## Towards a real API
 
-Créer le profil depuis un modèle, vérifier l'accès HTTPS sortant de l'IS (truststore, `proxyAlias`), puis Tester.
-Pour `jwt_bearer`, la clé privée doit être dans un keystore déclaré dans l'IS (Security > Keystore) ; la clé Google
-(fichier JSON) s'importe avec `openssl pkcs12 -export` puis un alias de keystore. Pour `authorization_code`,
-déclarer chez le fournisseur le `redirectUri` affiché dans le formulaire (`https://<is>/invoke/apiauth.oauth/callback`).
+Create the profile from a template, check the outbound HTTPS of the IS (truststore, `proxyAlias`), then Test.
+For `jwt_bearer`, the private key must be in a keystore declared in the IS (Security > Keystore); the Google key
+(JSON file) is imported with `openssl pkcs12 -export` then a keystore alias. For `authorization_code`, declare at
+the provider the `redirectUri` shown in the form (`https://<is>/invoke/apiauth.oauth/callback`).
 
-## Ce que le package ne couvre pas
+## What the package does not cover
 
-Signatures de requête (AWS SigV4, HMAC), NTLM / Kerberos (disponibles nativement dans `pub.client:http`),
-device code grant. Ce sont des extensions possibles du dispatcher `apiauth.credentials:get`.
-
-## Pièges IS rencontrés en construisant le package (sémantique des étapes MAP)
-
-- Dans une même étape MAP, **copier un record entier puis écrire un de ses enfants remplace le record copié** :
-  les en-têtes HTTP disparaissaient. Écrire les enfants avant, puis copier le record seul.
-- `appendToDocumentList` garde une **référence** vers le document ajouté : le réutiliser écrase l'entrée précédente ;
-  supprimer le document après chaque ajout.
-- Copie puis valeur par défaut (`overwrite=false`) sur la même cible dans une même étape : imprévisible ; les faire en
-  deux étapes séparées.
-- Les copies de la **map d'entrée** d'un INVOKE restent dans le pipeline de l'appelant : purger en sortie, sinon
-  les secrets fuient (vérifié par les tests).
-- `pub.jwt:generateSignedJWT` n'accepte que le format de date `dd/MM/yyyy HH:mm:ss` pour `expirationTime`.
+Request signatures (AWS SigV4, HMAC), NTLM / Kerberos (available natively in `pub.client:http`), device code
+grant. These are possible extensions of the `apiauth.credentials:get` dispatcher.

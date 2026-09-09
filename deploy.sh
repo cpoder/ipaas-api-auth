@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
-# Déploiement des packages d'authentification d'API (idempotent). IS_HOME et WM_MCP_BIN surchargeables par l'environnement.
-#   ./deploy.sh            -> ApiAuth (universel) : simulateur, package, tests, UI
-#   ./deploy.sh apiauth    -> idem
-#   ./deploy.sh ionapi     -> package IonApiClient (Infor ION API seul) : simulateur, package, tests, UI
+# Deploys the API authentication packages (idempotent). IS_HOME and WM_MCP_BIN can be overridden from the environment.
+#   ./deploy.sh            -> ApiAuth (universal): simulator, package, tests, UI
+#   ./deploy.sh apiauth    -> same
+#   ./deploy.sh ionapi     -> IonApiClient package (Infor ION API only): simulator, package, tests, UI
+#   ./deploy.sh all        -> both
 set -euo pipefail
 cd "$(dirname "$0")"
 IS_HOME=${IS_HOME:-/home/cpo/wm12/IntegrationServer/instances/default}
-curl -sf -m 5 -u Administrator:manage http://localhost:5555/invoke/wm.server/ping >/dev/null || { echo "IS injoignable sur :5555 (démarrer $IS_HOME/bin/startup.sh)"; exit 1; }
-ionapi() {   # volet EAI : simulateur ION API + package IonApiClient + tests
+curl -sf -m 5 -u Administrator:manage http://localhost:5555/invoke/wm.server/ping >/dev/null || { echo "Integration Server unreachable on :5555 (start $IS_HOME/bin/startup.sh)"; exit 1; }
+ionapi() {   # ION API simulator + IonApiClient package + tests
   pgrep -f "^python3 ion_mock.py" >/dev/null || (cd mock && setsid nohup python3 ion_mock.py 8085 > ion_mock.log 2>&1 < /dev/null &)
   sleep 1
   python3 wm/ionapi_build.py deploy test
   mkdir -p "$IS_HOME/packages/IonApiClient/pub" && cp ui/ionapi/index.html "$IS_HOME/packages/IonApiClient/pub/index.html"
   echo "[ionapi] http://localhost:5555/IonApiClient/index.html"
 }
-apiauth() {  # authentification d'API universelle : simulateur + package ApiAuth + tests + UI
+apiauth() {  # universal simulator + ApiAuth package + tests + UI
   pgrep -f "^python3 auth_mock.py" >/dev/null || (cd mock && setsid nohup python3 auth_mock.py 8086 > auth_mock.log 2>&1 < /dev/null &)
   [ -f mock/is_cert.pem ] || keytool -exportcert -rfc -alias ssos -keystore "$IS_HOME/../../../common/conf/keystore.jks" -storepass manage -file mock/is_cert.pem 2>/dev/null || true
   sleep 1

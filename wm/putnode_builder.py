@@ -1,6 +1,6 @@
-"""Mini-constructeur de flow services pour l'API putNode de l'Integration Server (voir flows.py pour l'usage).
+"""Small flow service builder for the Integration Server putNode API (see flows.py for usage).
 
-Chemins WmPath explicites : /champ;type;dim  (1 = String, 2 = Record, 3 = Object, 4 = RecordRef ; dim 0 scalaire, 1 liste).
+Explicit WmPath paths: /field;type;dim  (1 = String, 2 = Record, 3 = Object, 4 = RecordRef; dim 0 scalar, 1 list).
 """
 import json
 from xml.sax.saxutils import escape
@@ -47,7 +47,7 @@ def try_catch(try_nodes, catch_nodes):
     return [sequence(*try_nodes, form="TRY"), sequence(*catch_nodes, form="CATCH")]
 
 def quiet(*nodes, comment=None):
-    """SEQUENCE exit-on DONE : les échecs des enfants n'interrompent pas le flow (ex. clé absente du coffre)."""
+    """SEQUENCE exit-on DONE: child failures do not interrupt the flow (e.g. key missing from the store)."""
     return sequence(*nodes, exit_on="DONE", comment=comment)
 
 def loop(in_array, out_array, *nodes, comment=None, threads=None):
@@ -58,13 +58,13 @@ def loop(in_array, out_array, *nodes, comment=None, threads=None):
     return d
 
 def branch(switch, *cases, comment=None):
-    """cases : (label, [nodes]) — BRANCH sur la valeur d'une variable."""
+    """cases: (label, [nodes]) -- BRANCH on the value of a variable."""
     d = {"type": "BRANCH", "switch": switch, "nodes": [sequence(*n, label=l) for l, n in cases]}
     if comment: d["comment"] = comment
     return d
 
 def branch_expr(*cases, comment=None):
-    """cases : (expression, [nodes]) — BRANCH à expressions (clé putNode : evaluate-labels)."""
+    """cases: (expression, [nodes]) -- BRANCH on expressions (putNode key: evaluate-labels)."""
     d = {"type": "BRANCH", "evaluate-labels": "true", "nodes": [sequence(*n, label=e) for e, n in cases]}
     if comment: d["comment"] = comment
     return d
@@ -93,7 +93,7 @@ def service(ns, pkg, sig_in, sig_out, nodes, comment=""):
             "svc_sig": {"sig_in": sig_in, "sig_out": sig_out},
             "flow": {"type": "ROOT", "version": "3.0", "cleanup": "true", "nodes": flat(nodes)}}
 
-# ------------------------------------------------------------------ déploiement
+# ------------------------------------------------------------------ deployment
 def ignore_exists(fn):
     try:
         return fn()
@@ -114,7 +114,7 @@ def node_exists(m, full):
         return False
 
 def deploy(m, pkg, services, acl=None):
-    """Crée/met à jour chaque service (coquille puis putNode), vérifie par node_get, assigne éventuellement une ACL."""
+    """Creates/updates each service (shell then putNode), verifies with node_get, optionally assigns an ACL."""
     ok = True
     for s in services:
         full = s["node_nsName"]
@@ -126,8 +126,8 @@ def deploy(m, pkg, services, acl=None):
                 raise RuntimeError(out[:400])
             g = json.loads(m.call("node_get", {"name": full}))
             if (g.get("node") or {}).get("svc_type") != "flow":
-                raise RuntimeError("nœud absent ou non flow après put_node")
-            if acl:  # wm.server.access:aclAssign(target, acl) = ACL d'exécution (l'outil MCP acl_assign 2.12.0 n'applique rien)
+                raise RuntimeError("node missing or not a flow after put_node")
+            if acl:  # wm.server.access:aclAssign(target, acl) = execute ACL (the MCP tool acl_assign 2.12.0 applied nothing)
                 m.call("service_invoke", {"service_path": "wm.server.access:aclAssign", "inputs": json.dumps({"target": full, "acl": acl})})
             print(f"OK  {full}" + (f" (ACL {acl})" if acl else ""))
         except Exception as e:

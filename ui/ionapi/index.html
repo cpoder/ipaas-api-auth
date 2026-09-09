@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ION API · accès par compte de service</title>
+<title>ION API · service-account access</title>
 <style>
   :root { --bg:#0f1419; --panel:#161c24; --panel2:#1c2430; --line:#2a3542; --text:#e6edf3; --muted:#8b98a8; --blue:#4589ff; --cyan:#33b1ff; --green:#42be65; --amber:#f1c21b; --red:#fa4d56; --purple:#a56eff; }
   * { box-sizing:border-box; }
@@ -49,63 +49,63 @@
 </head>
 <body>
 <header>
-  <h1>ION API · <span data-t="title">accès par compte de service</span> <small data-t="subtitle">OAuth 2 sans gestion manuelle des jetons, sur webMethods Integration Server</small></h1>
+  <h1>ION API · <span data-t="title">service-account access</span> <small data-t="subtitle">OAuth 2 without manual token handling, on webMethods Integration Server</small></h1>
   <div class="spacer"></div>
   <span class="pill info" id="hdrState">…</span>
 </header>
 <main>
   <section class="panel">
-    <h2><span data-t="accesses">Accès configurés</span> <span class="tag" id="aliasCount"></span></h2>
+    <h2><span data-t="accesses">Configured accesses</span> <span class="tag" id="aliasCount"></span></h2>
     <div id="aliases"></div>
     <div class="card">
-      <h3 id="formTitle" data-t="add">Ajouter un accès</h3>
+      <h3 id="formTitle" data-t="add">Add an access</h3>
       <div class="row">
-        <div><label data-t="aliasName">Nom de l'accès (alias)</label><input id="fAlias" placeholder="m3-prod"></div>
-        <div><label data-t="file">Fichier .ionapi (téléchargé depuis Infor ION API, compte de service)</label><input type="file" id="fFile" accept=".ionapi,application/json"></div>
+        <div><label data-t="aliasName">Access name (alias)</label><input id="fAlias" placeholder="m3-prod"></div>
+        <div><label data-t="file">.ionapi file (downloaded from Infor ION API, service account)</label><input type="file" id="fFile" accept=".ionapi,application/json"></div>
       </div>
-      <div class="tabs" style="margin-top:10px"><button class="small on" id="tabFile" data-t="tabFile">Fichier .ionapi</button><button class="small" id="tabManual" data-t="tabManual">Saisie manuelle</button></div>
+      <div class="tabs" style="margin-top:10px"><button class="small on" id="tabFile" data-t="tabFile">.ionapi file</button><button class="small" id="tabManual" data-t="tabManual">Manual entry</button></div>
       <div id="modeFile">
-        <label data-t="paste">… ou collez son contenu</label>
+        <label data-t="paste">… or paste its content</label>
         <textarea id="fJson" placeholder='{"ti":"…","ci":"…","cs":"…","iu":"https://mingle-ionapi…","pu":"https://mingle-sso…/as/","ot":"token.oauth2","saak":"…","sask":"…"}'></textarea>
         <div class="parsed" id="parsed"></div>
       </div>
       <div id="modeManual" hidden>
         <div class="row">
-          <div><label data-t="mTokenUrl">URL du serveur de jetons</label><input id="mTokenUrl" placeholder="https://mingle-sso.inforcloudsuite.com:443/TENANT/as/token.oauth2"></div>
-          <div><label data-t="mApiBase">URL de base des API</label><input id="mApiBase" placeholder="https://mingle-ionapi.inforcloudsuite.com/TENANT"></div>
-          <div><label data-t="mClientId">Client id (application autorisée)</label><input id="mClientId"></div>
+          <div><label data-t="mTokenUrl">Token server URL</label><input id="mTokenUrl" placeholder="https://mingle-sso.inforcloudsuite.com:443/TENANT/as/token.oauth2"></div>
+          <div><label data-t="mApiBase">API base URL</label><input id="mApiBase" placeholder="https://mingle-ionapi.inforcloudsuite.com/TENANT"></div>
+          <div><label data-t="mClientId">Client id (authorized app)</label><input id="mClientId"></div>
           <div><label data-t="mClientSecret">Client secret</label><input id="mClientSecret" type="password"></div>
-          <div><label data-t="mSaak">Identifiant du compte de service (saak)</label><input id="mSaak"></div>
-          <div><label data-t="mSask">Secret du compte de service (sask)</label><input id="mSask" type="password"></div>
-          <div><label data-t="mScope">Scope (optionnel)</label><input id="mScope"></div>
+          <div><label data-t="mSaak">Service account key (saak)</label><input id="mSaak"></div>
+          <div><label data-t="mSask">Service account secret (sask)</label><input id="mSask" type="password"></div>
+          <div><label data-t="mScope">Scope (optional)</label><input id="mScope"></div>
         </div>
-        <p class="hint" data-t="mHint">Infor exige les quatre secrets pour un compte de service (client id / secret de l'application autorisée + saak / sask). Le fichier .ionapi ne fait que les regrouper.</p>
+        <p class="hint" data-t="mHint">Infor requires the four secrets for a service account (client id / secret of the authorized app + saak / sask). The .ionapi file merely bundles them.</p>
       </div>
-      <p class="hint" data-t="hint">Les quatre secrets (client id / secret, saak / sask) sont enregistrés dans le coffre chiffré de l'Integration Server. Aucun jeton à saisir : le package l'obtient, le met en cache et le renouvelle.</p>
-      <div class="actions"><button class="primary" id="btnSave" data-t="save">Enregistrer</button><button id="btnClear" data-t="clear">Effacer</button></div>
+      <p class="hint" data-t="hint">The four secrets (client id / secret, saak / sask) are stored in the Integration Server encrypted store. No token to enter: the package obtains it, caches it and renews it.</p>
+      <div class="actions"><button class="primary" id="btnSave" data-t="save">Save</button><button id="btnClear" data-t="clear">Clear</button></div>
     </div>
-    <div class="mock" id="mockBox"><span data-t="mockLabel">Simulateur ION API (mock/ion_mock.py, port 8085) : durée de vie des jetons</span><input id="mockTtl" type="number" min="10" max="7200"><span>s</span><button class="small" id="btnTtl" data-t="apply">Appliquer</button><span class="k" data-t="mockHint">(court pour montrer le renouvellement automatique)</span></div>
+    <div class="mock" id="mockBox"><span data-t="mockLabel">Local ION API simulator: token lifetime</span><input id="mockTtl" type="number" min="10" max="7200"><span>s</span><button class="small" id="btnTtl" data-t="apply">Apply</button><span class="k" data-t="mockHint">(short, to show the automatic renewal)</span></div>
   </section>
 
   <section class="panel">
-    <h2><span data-t="call">Appeler ION API</span> <span class="tag" data-t="callTag">le flow appelant ne voit jamais de jeton</span></h2>
+    <h2><span data-t="call">Call ION API</span> <span class="tag" data-t="callTag">the calling flow never sees a token</span></h2>
     <div class="row3">
-      <div><label data-t="access">Accès</label><select id="cAlias"></select></div>
-      <div><label data-t="method">Méthode</label><select id="cMethod"><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option></select></div>
-      <div><label data-t="path">Chemin (relatif à la base de l'accès)</label><input id="cPath" value="/M3/m3api-rest/v2/execute/CRS610MI/GetBasicData?CUNO=C000042"></div>
+      <div><label data-t="access">Access</label><select id="cAlias"></select></div>
+      <div><label data-t="method">Method</label><select id="cMethod"><option>GET</option><option>POST</option><option>PUT</option><option>DELETE</option></select></div>
+      <div><label data-t="path">Path (relative to the access base URL)</label><input id="cPath" value="/M3/m3api-rest/v2/execute/CRS610MI/GetBasicData?CUNO=C000042"></div>
     </div>
-    <label data-t="body">Corps (POST / PUT, JSON)</label>
+    <label data-t="body">Body (POST / PUT, JSON)</label>
     <textarea id="cBody" style="min-height:60px"></textarea>
-    <div class="actions"><button class="primary" id="btnCall" data-t="send">Envoyer</button><button id="btnForce" data-t="forceNew" title="Force une nouvelle authentification avant l'appel">Ré-authentifier puis envoyer</button></div>
+    <div class="actions"><button class="primary" id="btnCall" data-t="send">Send</button><button id="btnForce" data-t="forceNew" title="Force a new authentication before the call">Re-authenticate then send</button></div>
     <div id="callResult"></div>
-    <h2 style="margin-top:16px"><span data-t="journal">Journal des jetons</span> <span class="tag" id="serverTime"></span></h2>
+    <h2 style="margin-top:16px"><span data-t="journal">Token journal</span> <span class="tag" id="serverTime"></span></h2>
     <div class="journal" id="journal"></div>
   </section>
 </main>
 <div id="toast"></div>
 <script>
 const AUTH = "Basic " + btoa("Administrator:manage");
-const LANG = new URLSearchParams(location.search).get("lang") === "en" ? "en" : "fr";
+const LANG = new URLSearchParams(location.search).get("lang") === "fr" ? "fr" : "en";
 const T = { fr: {}, en: {
   title: "service-account access", subtitle: "OAuth 2 without manual token handling, on webMethods Integration Server", accesses: "Configured accesses", add: "Add an access", aliasName: "Access name (alias)",
   file: ".ionapi file (downloaded from Infor ION API, service account)", paste: "… or paste its content", save: "Save", clear: "Clear", apply: "Apply",
@@ -119,12 +119,12 @@ const T = { fr: {}, en: {
   testOk: "Token obtained", testKo: "Failed", sent: "Sending…", status: "HTTP", elapsed: "ms", retried: "renewed after 401", none: "no event yet",
   ev: { password: "authentication", refresh: "refresh", "retry-401": "retry after 401", config: "configuration", error: "error", cache: "cache" }, s: "s"
 } };
-T.fr = { test: "Tester", del: "Supprimer", edit: "Modifier", noAccess: "Aucun accès configuré : ajoutez-en un à partir d'un fichier .ionapi.", tokenValid: "jeton valable, expire dans", tokenNone: "pas encore de jeton", tokenExpired: "jeton expiré",
+T.fr = { title: "accès par compte de service", subtitle: "OAuth 2 sans gestion manuelle des jetons, sur webMethods Integration Server", accesses: "Accès configurés", add: "Ajouter un accès", aliasName: "Nom de l'accès (alias)", file: "Fichier .ionapi (téléchargé depuis Infor ION API, compte de service)", tabFile: "Fichier .ionapi", tabManual: "Saisie manuelle", paste: "… ou collez son contenu", mTokenUrl: "URL du serveur de jetons", mApiBase: "URL de base des API", mClientId: "Client id (application autorisée)", mClientSecret: "Client secret", mSaak: "Identifiant du compte de service (saak)", mSask: "Secret du compte de service (sask)", mScope: "Scope (optionnel)", mHint: "Infor exige les quatre secrets pour un compte de service (client id / secret de l'application autorisée + saak / sask). Le fichier .ionapi ne fait que les regrouper.", hint: "Les quatre secrets (client id / secret, saak / sask) sont enregistrés dans le coffre chiffré de l'Integration Server. Aucun jeton à saisir : le package l'obtient, le met en cache et le renouvelle.", save: "Enregistrer", clear: "Effacer", mockLabel: "Simulateur ION API (mock/ion_mock.py, port 8085) : durée de vie des jetons", apply: "Appliquer", mockHint: "(court pour montrer le renouvellement automatique)", call: "Appeler ION API", callTag: "le flow appelant ne voit jamais de jeton", access: "Accès", method: "Méthode", path: "Chemin (relatif à la base de l'accès)", body: "Corps (POST / PUT, JSON)", send: "Envoyer", forceNew: "Ré-authentifier puis envoyer", journal: "Journal des jetons", test: "Tester", del: "Supprimer", edit: "Modifier", noAccess: "Aucun accès configuré : ajoutez-en un à partir d'un fichier .ionapi.", tokenValid: "jeton valable, expire dans", tokenNone: "pas encore de jeton", tokenExpired: "jeton expiré",
   source: "source", tenant: "tenant", apiBase: "base API", tokenUrl: "URL du jeton", clientId: "client id", account: "compte de service", saved: "enregistré", confirmDel: "Supprimer cet accès et son jeton ?",
   testOk: "Jeton obtenu", testKo: "Échec", sent: "Envoi…", status: "HTTP", elapsed: "ms", retried: "renouvelé après un 401", none: "aucun événement",
   ev: { password: "authentification", refresh: "refresh", "retry-401": "nouvel essai après 401", config: "configuration", error: "erreur", cache: "cache" }, s: "s" };
 const L = T[LANG]; const t = k => L[k] || k;
-if (LANG === "en") { document.documentElement.lang = "en"; document.title = "ION API · service-account access"; document.querySelectorAll("[data-t]").forEach(e => { if (T.en[e.dataset.t]) e.textContent = T.en[e.dataset.t]; }); }
+if (LANG === "fr") { document.documentElement.lang = "fr"; document.title = "ION API · accès par compte de service"; document.querySelectorAll("[data-t]").forEach(e => { if (T.fr[e.dataset.t]) e.textContent = T.fr[e.dataset.t]; }); }
 const $ = id => document.getElementById(id);
 async function api(svc, body) {
   const r = await fetch("/invoke/ionapi." + svc, { method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": AUTH }, body: JSON.stringify(body || {}) });
@@ -177,7 +177,7 @@ function parsePreview() {
     const j = JSON.parse($("fJson").value); const rows = [["tenant (ti)", j.ti], ["client id (ci)", j.ci], ["client secret (cs)", j.cs ? "••••••••" : ""], ["saak", j.saak], ["sask", j.sask ? "••••••••" : ""], ["API (iu)", j.iu], ["SSO (pu)", j.pu], ["token (ot)", j.ot]];
     box.innerHTML = rows.map(([k, v]) => `<span class="k">${k}</span><b>${esc(v) || "<span class=k>–</span>"}</b>`).join("");
     if (!$("fAlias").value && j.ti) $("fAlias").value = j.ti.toLowerCase();
-  } catch (e) { if ($("fJson").value.trim()) box.innerHTML = `<span class="k" style="color:var(--amber)">JSON ?</span>`; }
+  } catch (e) { if ($("fJson").value.trim()) box.innerHTML = `<span class="k" style="color:var(--amber)">invalid JSON</span>`; }
 }
 $("fJson").oninput = parsePreview;
 $("fFile").onchange = () => { const f = $("fFile").files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { $("fJson").value = r.result; parsePreview(); if (!$("fAlias").value) $("fAlias").value = f.name.replace(/\.ionapi$/i, ""); }; r.readAsText(f); };

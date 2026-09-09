@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Simulateur ION API (Infor) autonome pour la démo : serveur de jetons OAuth 2 (grant password avec compte de
-service saak/sask + client id/secret, grant refresh_token) et une API M3 factice protégée par Bearer.
+"""Standalone ION API (Infor) simulator for the demo: OAuth 2 token server (password grant with a service
+account saak/sask + client id/secret, refresh_token grant) and a fake M3 API protected by Bearer.
 
   POST /<tenant>/as/token.oauth2                         grant_type=password|refresh_token (form-urlencoded)
   GET  /<tenant>/M3/m3api-rest/v2/execute/<prog>/<trans>  Authorization: Bearer <token>
-  GET|POST /admin/ttl[?seconds=N]                         durée de vie des jetons (défaut 90 s, pour montrer le renouvellement)
-  POST /admin/revoke                                     révoque tous les jetons émis (simule une invalidation côté Infor)
+  GET|POST /admin/ttl[?seconds=N]                         token lifetime (default 90 s, to show the renewal)
+  POST /admin/revoke                                     revokes every issued token (simulates an invalidation on the Infor side)
 
-Usage : python3 ion_mock.py [port]   (défaut 8085). Aucune dépendance.
+Usage: python3 ion_mock.py [port]   (default 8085). No dependency.
 """
 import json, sys, time, threading, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -47,7 +47,7 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         u = urlparse(self.path); ln = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(ln).decode() if ln else ""
-        if u.path == "/admin/revoke":  # simule une invalidation côté Infor : tous les jetons deviennent inconnus
+        if u.path == "/admin/revoke":  # simulates an invalidation on the Infor side: every token becomes unknown
             with LOCK: n = len(STATE["tokens"]); STATE["tokens"].clear()
             return self._send(200, {"revoked": n})
         if u.path == "/admin/ttl":
@@ -58,15 +58,15 @@ class H(BaseHTTPRequestHandler):
         if u.path.endswith("/as/token.oauth2"):
             f = {k: v[0] for k, v in parse_qs(raw).items()}
             if f.get("client_id") != CLIENT_ID or f.get("client_secret") != CLIENT_SECRET:
-                return self._send(401, {"error": "invalid_client", "error_description": "client id / secret incorrects"})
+                return self._send(401, {"error": "invalid_client", "error_description": "incorrect client id / secret"})
             g = f.get("grant_type")
             if g == "password":
                 if f.get("username") != SAAK or f.get("password") != SASK:
-                    return self._send(401, {"error": "invalid_grant", "error_description": "compte de service (saak / sask) refusé"})
+                    return self._send(401, {"error": "invalid_grant", "error_description": "service account (saak / sask) refused"})
                 return self._send(200, self._issue())
             if g == "refresh_token":
                 if f.get("refresh_token") not in STATE["refresh"]:
-                    return self._send(401, {"error": "invalid_grant", "error_description": "refresh token inconnu"})
+                    return self._send(401, {"error": "invalid_grant", "error_description": "unknown refresh token"})
                 return self._send(200, self._issue())
             return self._send(400, {"error": "unsupported_grant_type"})
         return self._send(404, {"error": "not_found", "path": u.path})
@@ -77,12 +77,12 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, {"ttl": STATE["ttl"], "issued": STATE["issued"], "active": sum(1 for e in STATE["tokens"].values() if e > time.time())})
         auth = self.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
-            return self._send(401, {"error": "invalid_token", "error_description": "Authorization: Bearer manquant"}, {"WWW-Authenticate": 'Bearer realm="ION"'})
+            return self._send(401, {"error": "invalid_token", "error_description": "missing Authorization: Bearer"}, {"WWW-Authenticate": 'Bearer realm="ION"'})
         exp = STATE["tokens"].get(auth[7:])
         if exp is None:
-            return self._send(401, {"error": "invalid_token", "error_description": "jeton inconnu"})
+            return self._send(401, {"error": "invalid_token", "error_description": "unknown token"})
         if exp < time.time():
-            return self._send(401, {"error": "expired_token", "error_description": "jeton expiré"})
+            return self._send(401, {"error": "expired_token", "error_description": "expired token"})
         parts = [p for p in u.path.split("/") if p]
         if "m3api-rest" in parts:
             prog, trans = parts[-2], parts[-1]

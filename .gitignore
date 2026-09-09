@@ -3,5 +3,5 @@ __pycache__/
 .claude/
 .mcp.json
 *.log
-# certificat public de la clé IS, exporté par deploy.sh (propre à chaque installation)
+# public certificate of the IS key, exported by deploy.sh (specific to each installation)
 mock/is_cert.pem

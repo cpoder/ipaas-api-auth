@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>API Auth · profils d'accès</title>
+<title>API Auth · access profiles</title>
 <style>
   :root { --bg:#0f1419; --panel:#161c24; --panel2:#1c2430; --line:#2a3542; --text:#e6edf3; --muted:#8b98a8; --blue:#4589ff; --cyan:#33b1ff; --green:#42be65; --amber:#f1c21b; --red:#fa4d56; --purple:#a56eff; }
   * { box-sizing:border-box; }
@@ -51,60 +51,60 @@
 </head>
 <body>
 <header>
-  <h1>API Auth · <span data-t="title">profils d'accès</span> <small data-t="subtitle">Basic, clé d'API, jeton, OAuth 2 (5 grants) : aucune gestion manuelle des jetons, sur webMethods Integration Server</small></h1>
+  <h1>API Auth · <span data-t="title">access profiles</span> <small data-t="subtitle">Basic, API key, token, OAuth 2 (5 grants): no manual token handling, on webMethods Integration Server</small></h1>
   <div class="spacer"></div>
   <span class="pill info" id="hdrState">…</span>
 </header>
 <main>
   <section class="panel">
-    <h2><span data-t="profiles">Profils configurés</span> <span class="tag" id="profileCount"></span></h2>
+    <h2><span data-t="profiles">Configured profiles</span> <span class="tag" id="profileCount"></span></h2>
     <div id="profiles"></div>
     <div class="card">
-      <h3 id="formTitle" data-t="add">Ajouter un profil</h3>
+      <h3 id="formTitle" data-t="add">Add a profile</h3>
       <div class="preset">
-        <div><label data-t="preset">Modèle (pré-remplit les champs)</label><select id="fPreset"></select></div>
-        <div id="ionBox" hidden><label data-t="ionFile">Fichier .ionapi</label><input type="file" id="fIon" accept=".ionapi,application/json"></div>
+        <div><label data-t="preset">Template (pre-fills the fields)</label><select id="fPreset"></select></div>
+        <div id="ionBox" hidden><label data-t="ionFile">.ionapi file</label><input type="file" id="fIon" accept=".ionapi,application/json"></div>
       </div>
       <div class="row">
-        <div><label data-t="alias">Nom du profil (alias)</label><input id="fAlias" placeholder="crm-prod"></div>
-        <div><label data-t="baseUrl">URL de base de l'API</label><input id="fBaseUrl" placeholder="https://api.example.com/v1"></div>
+        <div><label data-t="alias">Profile name (alias)</label><input id="fAlias" placeholder="crm-prod"></div>
+        <div><label data-t="baseUrl">API base URL</label><input id="fBaseUrl" placeholder="https://api.example.com/v1"></div>
       </div>
-      <label data-t="type">Type d'authentification</label>
+      <label data-t="type">Authentication type</label>
       <div class="types" id="types"></div>
-      <div id="grantBox" hidden><label data-t="grant">Grant OAuth 2</label><select id="fGrant"></select><p class="hint" id="grantHint"></p></div>
+      <div id="grantBox" hidden><label data-t="grant">OAuth 2 grant</label><select id="fGrant"></select><p class="hint" id="grantHint"></p></div>
       <div class="row" id="fields"></div>
-      <details id="adv"><summary data-t="advanced">Options avancées (proxy, mTLS, paramètres supplémentaires, chemin de test)</summary><div class="row" id="advFields"></div></details>
-      <p class="hint" data-t="storeHint">Les secrets sont chiffrés dans le coffre de l'Integration Server. Pour un profil OAuth 2, le package obtient le jeton, le met en cache, le renouvelle et se ré-authentifie sur 401 : le flow appelant n'appelle que apiauth.api:call(alias, method, path).</p>
-      <div class="actions"><button class="primary" id="btnSave" data-t="save">Enregistrer</button><button id="btnClear" data-t="clear">Nouveau</button><span class="hint" id="editNote"></span></div>
+      <details id="adv"><summary data-t="advanced">Advanced options (proxy, mTLS, extra parameters, test path)</summary><div class="row" id="advFields"></div></details>
+      <p class="hint" data-t="storeHint">Secrets are encrypted in the Integration Server store. For an OAuth 2 profile the package obtains the token, caches it, renews it and re-authenticates on 401: the calling flow only calls apiauth.api:call(alias, method, path).</p>
+      <div class="actions"><button class="primary" id="btnSave" data-t="save">Save</button><button id="btnClear" data-t="clear">New</button><span class="hint" id="editNote"></span></div>
     </div>
     <div class="mock" id="mockBox">
-      <span data-t="mockLabel">Simulateur local (mock/auth_mock.py, port 8086) : durée de vie des jetons</span>
-      <input id="mockTtl" type="number" min="5" value="90"> s <button class="small" id="btnTtl" data-t="apply">Appliquer</button>
-      <button class="small" id="btnRevoke" data-t="revoke">Révoquer tous les jetons</button>
-      <span data-t="mockHint">(pour montrer le renouvellement automatique et le nouvel essai après 401)</span>
+      <span data-t="mockLabel">Local simulator (mock/auth_mock.py, port 8086): token lifetime</span>
+      <input id="mockTtl" type="number" min="5" value="90"> s <button class="small" id="btnTtl" data-t="apply">Apply</button>
+      <button class="small" id="btnRevoke" data-t="revoke">Revoke all tokens</button>
+      <span data-t="mockHint">(to show automatic renewal and the retry after 401)</span>
     </div>
   </section>
   <section class="panel">
-    <h2><span data-t="call">Appeler une API</span> <span class="tag" data-t="callTag">le flow appelant ne voit jamais de secret</span></h2>
+    <h2><span data-t="call">Call an API</span> <span class="tag" data-t="callTag">the calling flow never sees a secret</span></h2>
     <div class="row3">
-      <div><label data-t="profile">Profil</label><select id="cAlias"></select></div>
-      <div><label data-t="method">Méthode</label><select id="cMethod"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></div>
-      <div><label data-t="path">Chemin (relatif à l'URL de base)</label><input id="cPath" value="/api/bearer/customers/C000042"></div>
+      <div><label data-t="profile">Profile</label><select id="cAlias"></select></div>
+      <div><label data-t="method">Method</label><select id="cMethod"><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select></div>
+      <div><label data-t="path">Path (relative to the base URL)</label><input id="cPath" value="/api/bearer/customers/C000042"></div>
     </div>
     <div class="row">
-      <div><label data-t="body">Corps (POST / PUT, JSON)</label><textarea id="cBody"></textarea></div>
-      <div><label data-t="headers">En-têtes supplémentaires (JSON)</label><textarea id="cHeaders" placeholder='{"X-Request-Id": "…"}'></textarea></div>
+      <div><label data-t="body">Body (POST / PUT, JSON)</label><textarea id="cBody"></textarea></div>
+      <div><label data-t="headers">Extra headers (JSON)</label><textarea id="cHeaders" placeholder='{"X-Request-Id": "…"}'></textarea></div>
     </div>
-    <div class="actions"><button class="primary" id="btnCall" data-t="send">Envoyer</button></div>
+    <div class="actions"><button class="primary" id="btnCall" data-t="send">Send</button></div>
     <div id="callResult"></div>
-    <h2 style="margin-top:16px"><span data-t="journal">Journal d'authentification</span> <span class="tag" id="serverTime"></span></h2>
+    <h2 style="margin-top:16px"><span data-t="journal">Authentication journal</span> <span class="tag" id="serverTime"></span></h2>
     <div class="journal" id="journal"></div>
   </section>
 </main>
 <div id="toast"></div>
 <script>
 const AUTH = "Basic " + btoa("Administrator:manage");
-const LANG = new URLSearchParams(location.search).get("lang") === "en" ? "en" : "fr";
+const LANG = new URLSearchParams(location.search).get("lang") === "fr" ? "fr" : "en";
 const MOCK = "http://localhost:8086";
 const CALLBACK = location.origin + "/invoke/apiauth.oauth/callback";
 const T = { fr: {}, en: {
@@ -133,7 +133,7 @@ const T = { fr: {}, en: {
     "sim-basic": "Simulator: Basic", "sim-apikey": "Simulator: API key (header)", "sim-apikey-q": "Simulator: API key (query parameter)", "sim-static": "Simulator: static token" },
   groups: { providers: "Providers", sim: "Local simulator (demo)" }
 } };
-T.fr = { add: "Ajouter un profil", baseUrl: "URL de base", test: "Tester", edit: "Modifier", connect: "Connecter", disconnect: "Oublier le jeton", del: "Supprimer", noProfile: "Aucun profil : choisissez un modèle ci-dessous ou remplissez le formulaire.", tokenValid: "jeton valable, expire dans", tokenNone: "pas encore de jeton", tokenExpired: "jeton expiré (renouvelé au prochain appel)",
+T.fr = { title: "profils d'accès", subtitle: "Basic, clé d'API, jeton, OAuth 2 (5 grants) : aucune gestion manuelle des jetons, sur webMethods Integration Server", profiles: "Profils configurés", preset: "Modèle (pré-remplit les champs)", ionFile: "Fichier .ionapi", alias: "Nom du profil (alias)", type: "Type d'authentification", grant: "Grant OAuth 2", advanced: "Options avancées (proxy, mTLS, paramètres supplémentaires, chemin de test)", storeHint: "Les secrets sont chiffrés dans le coffre de l'Integration Server. Pour un profil OAuth 2, le package obtient le jeton, le met en cache, le renouvelle et se ré-authentifie sur 401 : le flow appelant n'appelle que apiauth.api:call(alias, method, path).", save: "Enregistrer", clear: "Nouveau", mockLabel: "Simulateur local (mock/auth_mock.py, port 8086) : durée de vie des jetons", apply: "Appliquer", revoke: "Révoquer tous les jetons", mockHint: "(pour montrer le renouvellement automatique et le nouvel essai après 401)", call: "Appeler une API", callTag: "le flow appelant ne voit jamais de secret", profile: "Profil", method: "Méthode", path: "Chemin (relatif à l'URL de base)", body: "Corps (POST / PUT, JSON)", headers: "En-têtes supplémentaires (JSON)", send: "Envoyer", journal: "Journal d'authentification", add: "Ajouter un profil", baseUrl: "URL de base", test: "Tester", edit: "Modifier", connect: "Connecter", disconnect: "Oublier le jeton", del: "Supprimer", noProfile: "Aucun profil : choisissez un modèle ci-dessous ou remplissez le formulaire.", tokenValid: "jeton valable, expire dans", tokenNone: "pas encore de jeton", tokenExpired: "jeton expiré (renouvelé au prochain appel)",
   connected: "connecté", notConnected: "non connecté : cliquez sur Connecter", refreshTok: "refresh token", source: "source", saved: "enregistré", confirmDel: "Supprimer ce profil et son jeton ?", testOk: "OK", testKo: "Échec", sent: "Envoi…", status: "HTTP", elapsed: "ms", retried: "renouvelé après un 401", none: "aucun événement",
   editing: "modification : laissez un secret vide pour conserver celui du coffre", connectWin: "Fenêtre de consentement ouverte : autorisez l'application, le jeton sera mémorisé automatiquement.", connectOk: "Connecté : jeton et refresh token mémorisés.", connectKo: "Connexion échouée, voir le journal.",
   types: { none: "Aucune", basic: "Basic", apikey: "Clé d'API", bearer: "Jeton statique", oauth2: "OAuth 2" },
@@ -153,7 +153,7 @@ T.fr = { add: "Ajouter un profil", baseUrl: "URL de base", test: "Tester", edit:
     "sim-basic": "Simulateur : Basic", "sim-apikey": "Simulateur : clé d'API (en-tête)", "sim-apikey-q": "Simulateur : clé d'API (paramètre de requête)", "sim-static": "Simulateur : jeton statique" },
   groups: { providers: "Fournisseurs", sim: "Simulateur local (démo)" } };
 const L = T[LANG]; const t = k => L[k] || k;
-if (LANG === "en") { document.documentElement.lang = "en"; document.title = "API Auth · access profiles"; document.querySelectorAll("[data-t]").forEach(e => { if (T.en[e.dataset.t]) e.textContent = T.en[e.dataset.t]; }); }
+if (LANG === "fr") { document.documentElement.lang = "fr"; document.title = "API Auth · profils d'accès"; document.querySelectorAll("[data-t]").forEach(e => { if (T.fr[e.dataset.t]) e.textContent = T.fr[e.dataset.t]; }); }
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 function toast(msg, ms = 4500) { const e = $("toast"); e.textContent = msg; e.style.display = "block"; clearTimeout(e._h); e._h = setTimeout(() => e.style.display = "none", ms); }
@@ -164,11 +164,11 @@ async function api(svc, body) {
   return j;
 }
 
-// ------------------------------------------------------------------ schéma du formulaire
+// ------------------------------------------------------------------ form schema
 const SIM = { tokenUrl: MOCK + "/oauth/token", authUrl: MOCK + "/oauth/authorize", clientId: "demo-client-id", clientSecret: "demo-client-secret" };
 const PRESETS = {
   generic: { type: "oauth2", grant: "client_credentials" },
-  "infor-ion": { type: "oauth2", grant: "password", preset: "infor-ion", labels: { username: "saak (identifiant du compte de service)", password: "sask (secret du compte de service)" } },
+  "infor-ion": { type: "oauth2", grant: "password", preset: "infor-ion", labels: { username: "saak (service account key)", password: "sask (service account secret)" } },
   entra: { type: "oauth2", grant: "client_credentials", tokenUrl: "https://login.microsoftonline.com/{tenant-id}/oauth2/v2.0/token", scope: "https://graph.microsoft.com/.default", baseUrl: "https://graph.microsoft.com/v1.0", testPath: "/users?$top=1" },
   "sf-cc": { type: "oauth2", grant: "client_credentials", tokenUrl: "https://{mydomain}.my.salesforce.com/services/oauth2/token", baseUrl: "https://{mydomain}.my.salesforce.com/services/data/v60.0", testPath: "/limits" },
   "sf-jwt": { type: "oauth2", grant: "jwt_bearer", tokenUrl: "https://login.salesforce.com/services/oauth2/token", jwtAudience: "https://login.salesforce.com", jwtSubject: "integration.user@company.com", baseUrl: "https://{mydomain}.my.salesforce.com/services/data/v60.0", testPath: "/limits", labels: { clientId: "Consumer key (connected app)" } },
@@ -248,18 +248,18 @@ $("fIon").onchange = async () => {
     const j = JSON.parse(await f.text());
     renderForm({ ...collect(), alias: $("fAlias").value || (j.ti || "ion").toLowerCase() + "-m3", tokenUrl: (j.pu || "") + (j.ot || ""), baseUrl: j.iu ? j.iu.replace(/\/$/, "") + (j.ti ? "/" + j.ti : "") : "", clientId: j.ci, clientSecret: j.cs, username: j.saak, password: j.sask, preset: "infor-ion" });
     toast(LANG === "en" ? ".ionapi file read: " + (j.ti || "?") : "Fichier .ionapi lu : tenant " + (j.ti || "?"));
-  } catch (e) { toast("JSON ? " + e.message); }
+  } catch (e) { toast("Invalid JSON: " + e.message); }
 };
 $("btnClear").onclick = () => applyPreset("generic");
 $("btnSave").onclick = async () => {
   const p = collect(); if (state.preset && state.preset !== "generic") p.preset = state.preset;
-  for (const k of ["extraParams", "jwtClaims"]) if (p[k]) { try { p[k] = JSON.parse(p[k]); } catch (e) { return toast(k + " : JSON ? " + e.message); } }
+  for (const k of ["extraParams", "jwtClaims"]) if (p[k]) { try { p[k] = JSON.parse(p[k]); } catch (e) { return toast(k + ": invalid JSON, " + e.message); } }
   if (p.mtlsKeyStore) { p.keyStoreAlias = p.mtlsKeyStore; delete p.mtlsKeyStore; } if (p.mtlsKey) { p.keyAlias = p.mtlsKey; delete p.mtlsKey; }
   try { const r = await api("admin/saveProfile", { profileJson: JSON.stringify(p), keepToken: state.editing ? "true" : "false" }); toast(r.message); applyPreset("generic"); refresh(); }
   catch (e) { toast(e.message, 8000); }
 };
 
-// ------------------------------------------------------------------ cartes
+// ------------------------------------------------------------------ cards
 function tokenPill(p) {
   if (p.type !== "oauth2") return "";
   const n = Number(p.tokenExpiresIn);
@@ -311,12 +311,12 @@ function renderProfiles(d) {
 async function refresh() { try { renderProfiles(await api("admin/listProfiles")); } catch (e) { $("hdrState").textContent = "IS ?"; console.error(e); } }
 window.addEventListener("message", ev => { if (ev.data && ev.data.apiauth) { toast(ev.data.apiauth === "connected" ? t("connectOk") : t("connectKo"), 6000); refresh(); } });
 
-// ------------------------------------------------------------------ appel
+// ------------------------------------------------------------------ call
 $("btnCall").onclick = async () => {
   const box = $("callResult"); box.innerHTML = `<p class="hint">${t("sent")}</p>`;
   const req = { alias: $("cAlias").value, method: $("cMethod").value.toLowerCase(), path: $("cPath").value };
   if ($("cBody").value.trim()) req.body = $("cBody").value;
-  if ($("cHeaders").value.trim()) { try { req.headers = JSON.parse($("cHeaders").value); } catch (e) { return toast("headers : JSON ? " + e.message); } }
+  if ($("cHeaders").value.trim()) { try { req.headers = JSON.parse($("cHeaders").value); } catch (e) { return toast("headers: invalid JSON, " + e.message); } }
   try {
     const r = await api("api/call", req); const ok = r.status && r.status[0] === "2";
     box.innerHTML = `<div class="actions" style="margin-top:8px"><span class="pill ${ok ? "ok" : "bad"}">${t("status")} ${esc(r.status)} ${esc(r.statusMessage)}</span><span class="pill type">${t("types")[r.authType] || esc(r.authType)}</span>${r.authType === "oauth2" ? `<span class="pill ${esc(r.source)}">${t("source")}: ${t("ev")[r.source] || esc(r.source)}</span>` : ""}${r.retried === "true" ? `<span class="pill warn">${t("retried")}</span>` : ""}<span class="pill">${esc(r.elapsedMs)} ${t("elapsed")}</span><span class="k">${esc(r.url)}</span></div>

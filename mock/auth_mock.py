@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Simulateur universel d'authentification d'API pour la démo du package ApiAuth. Aucune dépendance obligatoire
-(cryptography / pyjwt utilisés s'ils sont présents pour vérifier les JWT signés).
+"""Universal API authentication simulator for the ApiAuth package demo. No mandatory dependency
+(cryptography is used when present to verify signed JWTs).
 
-Serveur d'autorisation OAuth 2 :
+OAuth 2 authorization server:
   POST /oauth/token        grant_type = client_credentials | password | refresh_token | authorization_code
-                           | urn:ietf:params:oauth:grant-type:jwt-bearer ; client authentifié dans le corps ou en Basic
-  GET  /oauth/authorize    page de consentement (response_type=code, PKCE S256 optionnel) ; POST = approbation -> 302
-API protégées (GET /api/<mode>/customers/<id>) :
-  bearer   Authorization: Bearer <jeton OAuth 2 émis ici>
+                           | urn:ietf:params:oauth:grant-type:jwt-bearer; client authenticated in the body or as Basic
+  GET  /oauth/authorize    consent page (response_type=code, optional PKCE S256); POST = approval -> 302
+Protected APIs (GET /api/<mode>/customers/<id>):
+  bearer   Authorization: Bearer <OAuth 2 token issued here>
   basic    Authorization: Basic base64(basic-user:basic-pass)
-  apikey   en-tête X-API-Key: key-demo-123   ou   ?api_key=key-demo-123
-  static   Authorization: Bearer static-demo-token   (jeton d'accès personnel, ne change jamais)
-  open     aucune authentification
-Administration : GET|POST /admin/ttl[?seconds=N]  POST /admin/revoke  GET /admin/state
+  apikey   header X-API-Key: key-demo-123   or   ?api_key=key-demo-123
+  static   Authorization: Bearer static-demo-token   (personal access token, never changes)
+  open     no authentication
+Administration: GET|POST /admin/ttl[?seconds=N]  POST /admin/revoke  GET /admin/state
 
-Usage : python3 auth_mock.py [port]   (défaut 8086)
+Usage: python3 auth_mock.py [port]   (default 8086)
 """
 import base64, hashlib, json, os, sys, time, threading, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -22,10 +22,10 @@ from urllib.parse import urlparse, parse_qs, urlencode
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8086
 CLIENT_ID, CLIENT_SECRET = "demo-client-id", "demo-client-secret"
-USER, PASSWORD = "svc-user", "svc-pass"                 # grant password (compte de service)
+USER, PASSWORD = "svc-user", "svc-pass"                 # password grant (service account)
 BASIC_USER, BASIC_PASS = "basic-user", "basic-pass"
 API_KEY, STATIC_TOKEN = "key-demo-123", "static-demo-token"
-CERT_PEM = os.path.join(os.path.dirname(os.path.abspath(__file__)), "is_cert.pem")   # certificat public de la clé IS (JWT bearer)
+CERT_PEM = os.path.join(os.path.dirname(os.path.abspath(__file__)), "is_cert.pem")   # public certificate of the IS key (JWT bearer)
 STATE = {"ttl": 90, "tokens": {}, "refresh": {}, "codes": {}, "issued": 0, "log": []}
 LOCK = threading.Lock()
 
@@ -45,15 +45,15 @@ def b64url_sha256(s):
 
 
 def verify_jwt(assertion):
-    """Décode l'assertion JWT ; vérifie la signature RS256 avec le certificat IS si cryptography est disponible."""
+    """Decodes the JWT assertion; verifies the RS256 signature with the IS certificate when cryptography is available."""
     parts = assertion.split(".")
     if len(parts) != 3:
-        return None, "assertion JWT mal formée"
+        return None, "malformed JWT assertion"
     def dec(p): return base64.urlsafe_b64decode(p + "=" * (-len(p) % 4))
     try:
         header, claims = json.loads(dec(parts[0])), json.loads(dec(parts[1]))
     except Exception as e:
-        return None, f"JWT illisible : {e}"
+        return None, f"unreadable JWT: {e}"
     if os.path.exists(CERT_PEM):
         try:
             from cryptography import x509
@@ -66,11 +66,11 @@ def verify_jwt(assertion):
         except ImportError:
             claims["_signature"] = "not checked (cryptography missing)"
         except Exception as e:
-            return None, f"signature JWT invalide : {e}"
+            return None, f"invalid JWT signature: {e}"
     else:
         claims["_signature"] = "not checked (no is_cert.pem)"
     if claims.get("exp") and float(claims["exp"]) < time.time():
-        return None, "assertion JWT expirée"
+        return None, "expired JWT assertion"
     return claims, None
 
 
@@ -110,9 +110,9 @@ class H(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization", "")
         if auth.startswith("Basic "):
             try: u, p = base64.b64decode(auth[6:]).decode().split(":", 1)
-            except Exception: return False, "Basic illisible"
-            return (u == CLIENT_ID and p == CLIENT_SECRET), "client (Basic) : " + ("ok" if u == CLIENT_ID and p == CLIENT_SECRET else "refusé")
-        return (f.get("client_id") == CLIENT_ID and f.get("client_secret") == CLIENT_SECRET), "client (corps) : " + ("ok" if f.get("client_id") == CLIENT_ID and f.get("client_secret") == CLIENT_SECRET else "refusé")
+            except Exception: return False, "unreadable Basic header"
+            return (u == CLIENT_ID and p == CLIENT_SECRET), "client (Basic): " + ("ok" if u == CLIENT_ID and p == CLIENT_SECRET else "refused")
+        return (f.get("client_id") == CLIENT_ID and f.get("client_secret") == CLIENT_SECRET), "client (body): " + ("ok" if f.get("client_id") == CLIENT_ID and f.get("client_secret") == CLIENT_SECRET else "refused")
 
     def do_POST(self):
         u = urlparse(self.path); ln = int(self.headers.get("Content-Length") or 0)
@@ -128,7 +128,7 @@ class H(BaseHTTPRequestHandler):
             try: STATE["ttl"] = max(5, int(q.get("seconds", [STATE["ttl"]])[0]))
             except ValueError: pass
             return self._send(200, {"ttl": STATE["ttl"]})
-        if u.path == "/oauth/authorize":            # approbation du consentement -> redirection avec le code
+        if u.path == "/oauth/authorize":            # consent approval -> redirect with the code
             q = {k: v[0] for k, v in parse_qs(u.query).items()}; q.update(f)
             sep = "&" if "?" in q.get("redirect_uri", "") else "?"
             if f.get("approve") != "1":
@@ -142,7 +142,7 @@ class H(BaseHTTPRequestHandler):
             if g == "urn:ietf:params:oauth:grant-type:jwt-bearer":
                 claims, err = verify_jwt(f.get("assertion", ""))
                 if err: self._log("jwt-bearer refused: " + err); return self._send(401, {"error": "invalid_grant", "error_description": err})
-                if claims.get("iss") != CLIENT_ID: return self._send(401, {"error": "invalid_grant", "error_description": f"issuer inconnu : {claims.get('iss')}"})
+                if claims.get("iss") != CLIENT_ID: return self._send(401, {"error": "invalid_grant", "error_description": f"unknown issuer: {claims.get('iss')}"})
                 self._log(f"jwt-bearer accepted, {claims.get('_signature')}")
                 return self._send(200, self._issue("jwt-bearer", with_refresh=False, scope=claims.get("scope")))
             if not ok:
@@ -151,20 +151,20 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, self._issue("client_credentials", with_refresh=False, scope=f.get("scope")))
             if g == "password":
                 if f.get("username") != USER or f.get("password") != PASSWORD:
-                    self._log("password grant refused"); return self._send(401, {"error": "invalid_grant", "error_description": "identifiants du compte de service refusés"})
+                    self._log("password grant refused"); return self._send(401, {"error": "invalid_grant", "error_description": "service account credentials refused"})
                 return self._send(200, self._issue("password", scope=f.get("scope")))
             if g == "refresh_token":
-                with LOCK: src = STATE["refresh"].pop(f.get("refresh_token"), None)   # rotation : un refresh token ne sert qu'une fois
-                if not src: self._log("refresh refused (unknown or already used)"); return self._send(401, {"error": "invalid_grant", "error_description": "refresh token inconnu ou déjà utilisé"})
+                with LOCK: src = STATE["refresh"].pop(f.get("refresh_token"), None)   # rotation: a refresh token is used only once
+                if not src: self._log("refresh refused (unknown or already used)"); return self._send(401, {"error": "invalid_grant", "error_description": "unknown or already used refresh token"})
                 return self._send(200, self._issue("refresh:" + src))
             if g == "authorization_code":
                 with LOCK: c = STATE["codes"].pop(f.get("code"), None)
-                if not c or c["exp"] < time.time(): return self._send(401, {"error": "invalid_grant", "error_description": "code inconnu ou expiré"})
-                if c["redirect_uri"] != f.get("redirect_uri"): return self._send(401, {"error": "invalid_grant", "error_description": "redirect_uri différent"})
+                if not c or c["exp"] < time.time(): return self._send(401, {"error": "invalid_grant", "error_description": "unknown or expired code"})
+                if c["redirect_uri"] != f.get("redirect_uri"): return self._send(401, {"error": "invalid_grant", "error_description": "redirect_uri mismatch"})
                 if c["challenge"]:
                     v = f.get("code_verifier", "")
                     exp = b64url_sha256(v) if c["method"] == "S256" else v
-                    if exp != c["challenge"]: self._log("PKCE verifier mismatch"); return self._send(401, {"error": "invalid_grant", "error_description": "PKCE : code_verifier invalide"})
+                    if exp != c["challenge"]: self._log("PKCE verifier mismatch"); return self._send(401, {"error": "invalid_grant", "error_description": "PKCE: invalid code_verifier"})
                     self._log("PKCE verifier ok")
                 return self._send(200, self._issue("authorization_code", scope=c.get("scope")))
             return self._send(400, {"error": "unsupported_grant_type", "error_description": str(g)})
@@ -174,20 +174,20 @@ class H(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization", "")
         if mode == "open": return None
         if mode == "bearer":
-            if not auth.startswith("Bearer "): return (401, {"error": "invalid_token", "error_description": "Authorization: Bearer manquant"})
+            if not auth.startswith("Bearer "): return (401, {"error": "invalid_token", "error_description": "missing Authorization: Bearer"})
             exp = STATE["tokens"].get(auth[7:])
-            if exp is None: return (401, {"error": "invalid_token", "error_description": "jeton inconnu (révoqué ?)"})
-            if exp < time.time(): return (401, {"error": "expired_token", "error_description": "jeton expiré"})
+            if exp is None: return (401, {"error": "invalid_token", "error_description": "unknown token (revoked?)"})
+            if exp < time.time(): return (401, {"error": "expired_token", "error_description": "expired token"})
             return None
         if mode == "static":
-            return None if auth == "Bearer " + STATIC_TOKEN else (401, {"error": "invalid_token", "error_description": "jeton personnel invalide"})
+            return None if auth == "Bearer " + STATIC_TOKEN else (401, {"error": "invalid_token", "error_description": "invalid personal token"})
         if mode == "basic":
             try: u_, p_ = base64.b64decode(auth[6:]).decode().split(":", 1) if auth.startswith("Basic ") else ("", "")
             except Exception: u_, p_ = "", ""
-            return None if (u_, p_) == (BASIC_USER, BASIC_PASS) else (401, {"error": "unauthorized", "error_description": "Basic : utilisateur / mot de passe refusés"})
+            return None if (u_, p_) == (BASIC_USER, BASIC_PASS) else (401, {"error": "unauthorized", "error_description": "Basic: user / password refused"})
         if mode == "apikey":
             k = self.headers.get("X-API-Key") or q.get("api_key")
-            return None if k == API_KEY else (401, {"error": "invalid_api_key", "error_description": "clé d'API absente ou incorrecte"})
+            return None if k == API_KEY else (401, {"error": "invalid_api_key", "error_description": "missing or incorrect API key"})
         return (404, {"error": "unknown_mode", "error_description": mode})
 
     def do_GET(self):

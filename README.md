@@ -1,86 +1,98 @@
-# Authentification d'API sans gestion manuelle des jetons, sur webMethods Integration Server
+# API authentication without manual token handling, on webMethods Integration Server
 
-Deux packages Integration Server 12.1, construits par flow services (putNode via le serveur MCP wm-mcp-server),
-qui répondent à une plainte classique : « pour appeler une API, il faut configurer à la main jeton, refresh token,
-expiration… ». Ici, on décrit **un profil d'accès** (quel mécanisme, quels identifiants), les secrets vont dans le
-coffre chiffré de l'IS, et le flow métier n'appelle qu'un service : `apiauth.api:call(alias, method, path, body?)`.
-Le package obtient le jeton, le met en cache, le renouvelle avant expiration, se ré-authentifie et rejoue une fois
-après un 401, et journalise chaque événement.
+Two Integration Server 12.1 packages, built as flow services (putNode through the wm-mcp-server MCP server), that
+answer a classic complaint: "to call an API, you have to configure the token, the refresh token, the expiry... by
+hand". Here you describe **one access profile** (which mechanism, which credentials), the secrets go into the
+encrypted IS store, and the business flow calls a single service: `apiauth.api:call(alias, method, path, body?)`.
+The package obtains the token, caches it, renews it before expiry, re-authenticates and retries once after a 401,
+and journals every event.
 
-| Package | Périmètre | Interface | Doc |
+| Package | Scope | UI | Doc |
 |---|---|---|---|
-| **ApiAuth** | universel : none, Basic, clé d'API (en-tête ou paramètre), jeton statique, OAuth 2 avec les grants `client_credentials`, `password`, `refresh_token`, `authorization_code` + PKCE (bouton Connecter), `jwt_bearer` signé par le keystore de l'IS ; proxy, mTLS, modèles fournisseurs | `http://localhost:5555/ApiAuth/index.html` | `docs/apiauth.md` |
-| **IonApiClient** | version d'origine, spécialisée Infor ION API (compte de service, dépôt du fichier `.ionapi` ou saisie manuelle) ; remplacée par le modèle « Infor ION API » d'ApiAuth | `http://localhost:5555/IonApiClient/index.html` | `docs/ionapi-client.md` |
+| **ApiAuth** | universal: none, Basic, API key (header or parameter), static token, OAuth 2 with the `client_credentials`, `password`, `refresh_token`, `authorization_code` + PKCE (Connect button) and `jwt_bearer` grants signed by the IS keystore; proxy, mTLS, provider templates | `http://localhost:5555/ApiAuth/index.html` | `docs/apiauth.md` |
+| **IonApiClient** | original version, specialized for Infor ION API (service account, drop of the `.ionapi` file or manual entry); superseded by the "Infor ION API" template of ApiAuth | `http://localhost:5555/IonApiClient/index.html` | `docs/ionapi-client.md` |
 
-Les deux interfaces sont bilingues (`?lang=en`).
+Both UIs are bilingual (`?lang=fr`).
 
-## Captures d'écran
+## Screenshots
 
-Profils configurés (un par mécanisme), état des jetons en direct, appel d'API et journal :
+Configured profiles (one per mechanism), live token state, API call and journal:
 
-![Profils ApiAuth](docs/screenshots/apiauth-profils.png)
+![ApiAuth profiles](docs/screenshots/apiauth-profiles.png)
 
-Jeton révoqué côté serveur : renouvellement par refresh token et nouvel essai transparent après le 401 :
+Token revoked on the server side: renewal through the refresh token and transparent retry after the 401:
 
-![Appel après révocation](docs/screenshots/apiauth-appel-401-refresh.png)
+![Call after revocation](docs/screenshots/apiauth-call-401-refresh.png)
 
-Authorization code : fenêtre de consentement (simulateur) ouverte par le bouton Connecter, et formulaire avec PKCE et options avancées :
+Authorization code: consent window (simulator) opened by the Connect button, and form with PKCE and advanced options:
 
-![Consentement](docs/screenshots/apiauth-consentement.png)
+![Consent](docs/screenshots/apiauth-consent.png)
 
-![Modèle authorization code](docs/screenshots/apiauth-modele-authorization-code.png)
+![Authorization code template](docs/screenshots/apiauth-preset-authorization-code.png)
 
-Modèles Infor ION API (dépôt du fichier .ionapi) et compte de service Google (JWT bearer signé par le keystore de l'IS) :
+Infor ION API template (drop of the .ionapi file) and Google service account (JWT bearer signed by the IS keystore):
 
-![Modèle Infor](docs/screenshots/apiauth-modele-infor.png)
+![Infor template](docs/screenshots/apiauth-preset-infor.png)
 
-![Modèle Google](docs/screenshots/apiauth-modele-google-jwt.png)
+![Google template](docs/screenshots/apiauth-preset-google-jwt.png)
 
-Package IonApiClient d'origine : accueil et renouvellement automatique d'un jeton expiré :
+Original IonApiClient package: home and automatic renewal of an expired token:
 
-![IonApiClient](docs/screenshots/ionapi-accueil.png)
+![IonApiClient](docs/screenshots/ionapi-home.png)
 
-![Renouvellement](docs/screenshots/ionapi-renouvellement.png)
+![Renewal](docs/screenshots/ionapi-renewal.png)
 
-## Démarrage
+## Installing the packages with wpm (no agent, no MCP server)
 
-Prérequis : un Integration Server 12.1 joignable sur `localhost:5555` (`Administrator` / `manage`), Python 3, le
-binaire wm-mcp-server (`WM_MCP_BIN`, ou `.mcp.json` d'après `.mcp.json.example`), `keytool` pour exporter le certificat
-de la clé IS utilisée par le simulateur (grant `jwt_bearer`).
+Each package as deployed lives in its own repository, in the layout expected by wpm (webMethods Package Manager) and
+the webMethods Package Registry (`manifest.v3` at the root, tag `v1.0.0`):
 
 ```bash
-export IS_HOME=/chemin/vers/IntegrationServer/instances/default     # défaut : /home/cpo/wm12/...
-export WM_MCP_BIN=/chemin/vers/wm-mcp-server
-./deploy.sh            # ApiAuth : lance mock/auth_mock.py (port 8086), déploie, teste (« TESTS OK »), publie l'UI
-./deploy.sh ionapi     # IonApiClient : mock/ion_mock.py (port 8085), déploiement, tests, UI
+wpm install -r https://github.com/cpoder ApiAuth          # universal package
+wpm install -r https://github.com/cpoder IonApiClient     # Infor ION API only (superseded by ApiAuth)
 ```
 
-Dans l'interface ApiAuth, le menu « Modèle » propose neuf profils prêts à l'emploi contre le simulateur (un par
-mécanisme) : Enregistrer, Tester, puis Envoyer un appel. Le simulateur permet de raccourcir la durée de vie des
-jetons et de les révoquer pour montrer le renouvellement silencieux et le nouvel essai après 401.
+Without wpm: clone https://github.com/cpoder/ApiAuth or https://github.com/cpoder/IonApiClient into
+`IntegrationServer/instances/default/packages/<Name>` (or zip the content and use Packages > Management > Install
+Inbound Releases), then activate the package. No dependency beyond WmPublic; profiles are created from the admin UI
+and stored in the IS outbound password store, not in the package.
 
-## Contenu
+Verified on IS 12.1: git clone of the tag into `packages/`, reload (17 and 11 nodes, 0 error), both test suites
+`TESTS OK` against the installed packages, admin UIs checked in Chromium.
+
+## Getting started
+
+Prerequisites: an Integration Server 12.1 reachable on `localhost:5555` (`Administrator` / `manage`), Python 3,
+the wm-mcp-server binary (`WM_MCP_BIN`, or `.mcp.json` from `.mcp.json.example`), `keytool` to export the
+certificate of the IS key used by the simulator (`jwt_bearer` grant).
+
+```bash
+export IS_HOME=/path/to/IntegrationServer/instances/default     # default: /home/cpo/wm12/...
+export WM_MCP_BIN=/path/to/wm-mcp-server
+./deploy.sh            # ApiAuth: starts mock/auth_mock.py (port 8086), deploys, tests ("TESTS OK"), publishes the UI
+./deploy.sh ionapi     # IonApiClient: mock/ion_mock.py (port 8085), deployment, tests, UI
+```
+
+In the ApiAuth UI, the "Template" menu offers nine ready-to-use profiles against the simulator (one per mechanism):
+Save, Test, then Send a call. The simulator lets you shorten the token lifetime and revoke tokens to show the silent
+renewal and the retry after 401.
+
+## Contents
 
 ```
-wm/apiauth_build.py     package ApiAuth (17 flows) + suite de tests de bout en bout
-wm/ionapi_build.py      package IonApiClient (11 flows) + tests
-wm/putnode_builder.py   mini-constructeur de flow services pour l'API putNode
-wm/mcpcli.py            client JSON-RPC stdio du serveur MCP wm-mcp-server
-mock/auth_mock.py       serveur d'autorisation OAuth 2 (5 grants, PKCE, consentement) + API protégées (Bearer, Basic, clé, statique)
-mock/ion_mock.py        simulateur ION API (grant password + refresh, API M3 factice)
-ui/apiauth, ui/ionapi   interfaces d'administration
-docs/                   documentation des deux packages, fichier .ionapi de démonstration
+wm/apiauth_build.py     ApiAuth package (17 flows) + end-to-end test suite
+wm/ionapi_build.py      IonApiClient package (11 flows) + tests
+wm/putnode_builder.py   small flow service builder for the putNode API
+wm/mcpcli.py            stdio JSON-RPC client of the wm-mcp-server MCP server
+mock/auth_mock.py       OAuth 2 authorization server (5 grants, PKCE, consent) + protected APIs (Bearer, Basic, key, static)
+mock/ion_mock.py        ION API simulator (password grant + refresh, fake M3 API)
+ui/apiauth, ui/ionapi   admin UIs
+docs/                   documentation of both packages, demo .ionapi file
 ```
 
-## Ce que les tests vérifient
+## What the tests check
 
-Cinq types de profil, cinq grants, expiration puis renouvellement silencieux, révocation côté serveur puis nouvel
-essai transparent, rotation du refresh token, authorization code + PKCE de bout en bout (URL, consentement, retour
-sur l'IS), assertion JWT signée par la clé de l'IS et vérifiée par le simulateur, erreurs lisibles, profil incomplet
-refusé, modification d'un profil sans re-saisir le secret, et aucun secret dans les sorties des services.
-
-## Pièges IS rencontrés
-
-Ils sont détaillés en fin de `docs/apiauth.md` (sémantique des étapes MAP : copie de record puis écriture d'un enfant,
-référence conservée par `appendToDocumentList`, copies de la map d'entrée d'un INVOKE, format de date de
-`pub.jwt:generateSignedJWT`). Ils sont aussi intégrés à la documentation embarquée de wm-mcp-server.
+Five profile types, five grants, expiry then silent renewal, server-side revocation then transparent retry,
+refresh token rotation, end-to-end authorization code + PKCE (URL, consent, return to the IS), JWT assertion
+signed by the IS key and verified by the simulator, readable errors, incomplete profile refused, profile edit
+without retyping the secret, and no secret in the service outputs.

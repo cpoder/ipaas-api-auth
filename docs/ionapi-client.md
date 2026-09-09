@@ -1,84 +1,81 @@
-# Client ION API par compte de service (package `IonApiClient`)
+# ION API client with a service account (`IonApiClient` package)
 
-Objectif : appeler les API Infor M3 (ION API) avec un compte de service OAuth 2, **sans jamais
-configurer ni manipuler de jeton**. La seule configuration est le fichier `.ionapi` fourni par Infor, ou
-la saisie manuelle des mêmes valeurs dans l'interface d'administration (onglet *Saisie manuelle*).
+Goal: call the Infor M3 APIs (ION API) with an OAuth 2 service account, **without ever configuring or handling a
+token**. The only configuration is the `.ionapi` file delivered by Infor, or the manual entry of the same values
+in the admin UI (*Manual entry* tab).
 
-## Ce que voit l'utilisateur
+## What the user sees
 
-- **Interface d'administration** : `http://localhost:5555/IonApiClient/index.html` (`?lang=en` pour l'anglais),
-  authentification IS (Administrator / manage).
-  - *Accès configurés* : une carte par accès (tenant, base des API, URL du jeton, client id, compte de service
-    masqué, état du jeton avec compte à rebours et source : mot de passe / refresh / cache), boutons **Tester** et
-    **Supprimer**.
-  - *Ajouter un accès* : nom de l'accès + fichier `.ionapi` (sélecteur de fichier ou contenu collé) **ou** saisie
-    manuelle (URL du serveur de jetons, base des API, client id / secret, saak / sask, scope) ; aperçu des
-    champs lus ; **Enregistrer**. Rien d'autre à saisir.
-  - *Appeler ION API* : accès, méthode, chemin relatif (ex. `/M3/m3api-rest/v2/execute/CRS610MI/GetBasicData?CUNO=C000042`),
-    corps ; le résultat montre le code HTTP, la source du jeton (cache, mot de passe, refresh), un badge
-    « renouvelé après un 401 » le cas échéant, le temps de réponse et le JSON.
-  - *Journal des jetons* : authentifications, renouvellements, nouveaux essais après 401, erreurs, changements de configuration.
-  - *Simulateur* (démo) : réglage de la durée de vie des jetons émis par le faux ION API pour montrer le renouvellement.
-- **Pour un flow métier** : un seul service, `ionapi.api:call (alias, method, path, body?, contentType?)` →
+- **Admin UI**: `http://localhost:5555/IonApiClient/index.html` (`?lang=fr` for French), IS authentication
+  (Administrator / manage).
+  - *Configured accesses*: one card per access (tenant, API base URL, token URL, client id, masked service account,
+    token state with countdown and source: password / refresh / cache), **Test** and **Delete** buttons.
+  - *Add an access*: access name + `.ionapi` file (file picker or pasted content) **or** manual entry (token server
+    URL, API base URL, client id / secret, saak / sask, scope); preview of the parsed fields; **Save**. Nothing
+    else to enter.
+  - *Call ION API*: access, method, relative path (e.g. `/M3/m3api-rest/v2/execute/CRS610MI/GetBasicData?CUNO=C000042`),
+    body; the result shows the HTTP status, the token source (cache, password, refresh), a "renewed after 401"
+    badge when relevant, the response time and the JSON.
+  - *Token journal*: authentications, renewals, retries after 401, errors, configuration changes.
+  - *Simulator* (demo): lifetime of the tokens issued by the fake ION API, to show the renewal.
+- **For a business flow**: a single service, `ionapi.api:call (alias, method, path, body?, contentType?)` ->
   `status, statusMessage, body, json, tokenSource, retried, elapsedMs, url`.
 
-## Comment ça marche
+## How it works
 
-| Service | Rôle |
+| Service | Role |
 |---|---|
-| `ionapi.admin:saveAlias` | accepte soit `ionapiJson`, soit les champs individuels (`tokenUrl`, `apiBaseUrl`, `clientId`, `clientSecret`, `saak`, `sask`, `scope`) ; refuse une configuration incomplète ; avec un fichier, lit le `.ionapi` (`ti`, `ci`, `cs`, `saak`, `sask`, `iu`, `pu`, `ot`), calcule `tokenUrl = pu + ot` et `apiBaseUrl = iu/ti`, enregistre la configuration (secrets compris) dans le **coffre de mots de passe sortants** de l'IS (chiffré au repos, `pub.security.outboundPasswords`) |
-| `ionapi.admin:listAliases` / `deleteAlias` / `testAlias` | liste sans les secrets + état des jetons + journal ; suppression ; test d'authentification avec diagnostic |
-| `ionapi.token:get (alias, forceRefresh)` | rend un jeton valable : cache (coffre) si non expiré, sinon grant `refresh_token`, sinon grant `password` (`username = saak`, `password = sask`, `client_id`, `client_secret`) ; marge de sécurité 30 s (5 s pour les jetons courts) ; les identifiants ne sortent jamais du service (TRY/CATCH avec purge) |
-| `ionapi.api:call` | `Authorization: Bearer` posé automatiquement ; sur **401**, nouvelle authentification et un seul nouvel essai transparent (jeton révoqué côté Infor, rotation de clés…) |
-| `ionapi.store:*` | accès au coffre (`WmSecureString`) |
-| `ionapi.token:logEvent` | journal borné conservé dans le coffre |
+| `ionapi.admin:saveAlias` | accepts either `ionapiJson` or the individual fields (`tokenUrl`, `apiBaseUrl`, `clientId`, `clientSecret`, `saak`, `sask`, `scope`); refuses an incomplete configuration; with a file, reads the `.ionapi` (`ti`, `ci`, `cs`, `saak`, `sask`, `iu`, `pu`, `ot`), computes `tokenUrl = pu + ot` and `apiBaseUrl = iu/ti`, stores the configuration (secrets included) in the IS **outbound password store** (encrypted at rest, `pub.security.outboundPasswords`) |
+| `ionapi.admin:listAliases` / `deleteAlias` / `testAlias` | listing without secrets + token state + journal; deletion; authentication test with a diagnostic |
+| `ionapi.token:get (alias, forceRefresh)` | returns a valid token: cache (store) when not expired, otherwise `refresh_token` grant, otherwise `password` grant (`username = saak`, `password = sask`, `client_id`, `client_secret`); 30 s safety margin (5 s for short-lived tokens); credentials never leave the service (TRY/CATCH with purge) |
+| `ionapi.api:call` | `Authorization: Bearer` set automatically; on **401**, new authentication and a single transparent retry (token revoked on the Infor side, key rotation...) |
+| `ionapi.store:*` | store access (`WmSecureString`) |
+| `ionapi.token:logEvent` | capped journal kept in the store |
 
-Construit par API (`wm/ionapi_build.py`, constructeur `wm/putnode_builder.py`) : 11 flow services, aucun code Java.
+Built through the API (`wm/ionapi_build.py`, builder `wm/putnode_builder.py`): 11 flow services, no Java code.
 
-## Simulateur ION API (démo et tests)
+## ION API simulator (demo and tests)
 
-`mock/ion_mock.py` (Python standard, port 8085) reproduit la forme des URL Infor :
-`POST /DEMO/as/token.oauth2` (grants `password` et `refresh_token`, client id/secret exigés) et
-`GET /DEMO/M3/m3api-rest/v2/execute/CRS610MI/GetBasicData?CUNO=…` protégé par Bearer. `POST /admin/ttl?seconds=N`
-règle la durée de vie des jetons, `POST /admin/revoke` simule une invalidation côté Infor. Fichier de démo :
-`docs/demo.ionapi`. Le simulateur est hors de l'IS parce que l'Integration Server intercepte lui-même tout
-`Authorization: Bearer` entrant (il le prend pour un jeton de son propre serveur OAuth).
+`mock/ion_mock.py` (standard Python, port 8085) reproduces the shape of the Infor URLs:
+`POST /DEMO/as/token.oauth2` (`password` and `refresh_token` grants, client id/secret required) and
+`GET /DEMO/M3/m3api-rest/v2/execute/CRS610MI/GetBasicData?CUNO=...` protected by Bearer. `POST /admin/ttl?seconds=N`
+sets the token lifetime, `POST /admin/revoke` simulates an invalidation on the Infor side. Demo file:
+`docs/demo.ionapi`. The simulator runs outside the IS because the Integration Server intercepts every inbound
+`Authorization: Bearer` header itself (it takes it for a token of its own OAuth server).
 
 ```bash
-python3 mock/ion_mock.py 8085 &          # simulateur
-python3 wm/ionapi_build.py deploy test   # package + tests de bout en bout (~40 s)
+python3 mock/ion_mock.py 8085 &          # simulator
+python3 wm/ionapi_build.py deploy test   # package + end-to-end tests (about 40 s)
 ```
 
-Tests couverts : coffre, enregistrement depuis `.ionapi`, jeton par compte de service, appel avec jeton en cache,
-expiration puis ré-authentification silencieuse, révocation côté serveur puis nouvel essai transparent, secret
-erroné refusé avec message lisible.
+Covered tests: store, registration from `.ionapi`, token with the service account, call with a cached token,
+expiry then silent re-authentication, server-side revocation then transparent retry, wrong secret refused with a
+readable message.
 
-## Brancher un vrai tenant Infor
+## Connecting a real Infor tenant
 
-Déposer le `.ionapi` du compte de service (type « Backend Service », grant Password Credentials) dans l'interface :
-`pu`/`ot` donnent `https://mingle-sso.inforcloudsuite.com:443/<TENANT>/as/token.oauth2`, `iu`/`ti` donnent
-`https://mingle-ionapi.inforcloudsuite.com/<TENANT>`. Vérifier la sortie HTTPS de l'IS (truststore, proxy
-éventuel via `proxyAlias` dans `ionapi.token:get` / `ionapi.api:call`). Si Infor impose un `scope`, le renseigner
-dans le `.ionapi` collé (champ `scope`) ou via `saveAlias`.
+Drop the `.ionapi` of the service account (type "Backend Service", Password Credentials grant) in the UI:
+`pu`/`ot` give `https://mingle-sso.inforcloudsuite.com:443/<TENANT>/as/token.oauth2`, `iu`/`ti` give
+`https://mingle-ionapi.inforcloudsuite.com/<TENANT>`. Check the outbound HTTPS of the IS (truststore, proxy if
+needed through `proxyAlias` in `ionapi.token:get` / `ionapi.api:call`). If Infor requires a `scope`, add it to the
+pasted `.ionapi` (`scope` field) or through `saveAlias`.
 
-## Limites et suites possibles
+## Limits and possible follow-ups
 
-- Un seul nouvel essai sur 401 ; pas de limitation de débit ni de file d'attente (à ajouter selon les volumes).
-- Le journal est borné à ~6 Ko (dernier événement conservé au-delà).
-- Suite naturelle : générer des services typés depuis le Swagger d'une API M3 (`openapi_generate_consumer`)
-  qui s'appuient sur `ionapi.token:get` pour l'authentification, ce qui donne une expérience « connecteur »
-  sans CloudStreams.
+- A single retry on 401; no rate limiting or queue (to add depending on volumes).
+- The journal is capped at about 6 KB (the last event is kept beyond that).
+- Natural follow-up: generate typed services from the Swagger of an M3 API (`openapi_generate_consumer`) that rely
+  on `ionapi.token:get` for authentication, which gives a "connector" experience without CloudStreams.
 
-## Pourquoi le fichier `.ionapi` (et pourquoi il n'est pas obligatoire)
+## Why the `.ionapi` file (and why it is not mandatory)
 
-Un compte de service Infor n'est pas un simple couple login / mot de passe. Pour obtenir un jeton, Infor exige
-quatre secrets : le `client_id` et le `client_secret` de l'*application autorisée* (le « client » OAuth2 déclaré
-dans ION API), puis le `saak` et le `sask` du compte de service lui-même (ils jouent le rôle de login / mot de
-passe dans le grant `password`). S'y ajoutent trois valeurs non secrètes : le tenant, l'URL du serveur de jetons
-et l'URL de base des API. Lorsqu'on crée l'application autorisée dans le portail ION API, Infor génère ces sept
-valeurs et les livre **uniquement** sous la forme du fichier `.ionapi` ; le `client_secret` n'est d'ailleurs
-plus consultable ensuite.
+An Infor service account is not a simple login / password pair. To obtain a token, Infor requires four secrets:
+the `client_id` and `client_secret` of the *authorized app* (the OAuth 2 "client" declared in ION API), then the
+`saak` and `sask` of the service account itself (they play the role of login / password in the `password` grant).
+Three non-secret values come on top: the tenant, the token server URL and the API base URL. When the authorized
+app is created in the ION API portal, Infor generates these seven values and delivers them **only** as the
+`.ionapi` file; the `client_secret` cannot be read again afterwards.
 
-Le fichier n'apporte donc rien de plus que les champs de la saisie manuelle : c'est un moyen d'éviter de recopier
-sept valeurs longues (et une erreur de frappe sur un secret se traduit par un `invalid_client` peu parlant).
-Les deux chemins aboutissent exactement à la même configuration chiffrée dans le coffre de l'IS.
+So the file brings nothing more than the fields of the manual entry: it is a way to avoid retyping seven long
+values (and a typo in a secret ends up as an unhelpful `invalid_client`). Both paths lead to exactly the same
+encrypted configuration in the IS store.
