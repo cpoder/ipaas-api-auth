@@ -14,6 +14,34 @@ après un 401, et journalise chaque événement.
 
 Les deux interfaces sont bilingues (`?lang=en`).
 
+## Captures d'écran
+
+Profils configurés (un par mécanisme), état des jetons en direct, appel d'API et journal :
+
+![Profils ApiAuth](docs/screenshots/apiauth-profils.png)
+
+Jeton révoqué côté serveur : renouvellement par refresh token et nouvel essai transparent après le 401 :
+
+![Appel après révocation](docs/screenshots/apiauth-appel-401-refresh.png)
+
+Authorization code : fenêtre de consentement (simulateur) ouverte par le bouton Connecter, et formulaire avec PKCE et options avancées :
+
+![Consentement](docs/screenshots/apiauth-consentement.png)
+
+![Modèle authorization code](docs/screenshots/apiauth-modele-authorization-code.png)
+
+Modèles Infor ION API (dépôt du fichier .ionapi) et compte de service Google (JWT bearer signé par le keystore de l'IS) :
+
+![Modèle Infor](docs/screenshots/apiauth-modele-infor.png)
+
+![Modèle Google](docs/screenshots/apiauth-modele-google-jwt.png)
+
+Package IonApiClient d'origine : accueil et renouvellement automatique d'un jeton expiré :
+
+![IonApiClient](docs/screenshots/ionapi-accueil.png)
+
+![Renouvellement](docs/screenshots/ionapi-renouvellement.png)
+
 ## Démarrage
 
 Prérequis : un Integration Server 12.1 joignable sur `localhost:5555` (`Administrator` / `manage`), Python 3, le
